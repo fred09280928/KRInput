@@ -108,13 +108,14 @@
             margin: 0;
         }
 
-        /* Control bar for hint toggle */
+        /* Control bar for hint and sound toggles */
         .control-bar {
             display: flex;
             align-items: center;
             justify-content: flex-end;
             margin: 5px 0 15px;
             gap: 15px;
+            flex-wrap: wrap;
         }
 
         .toggle-container {
@@ -190,6 +191,7 @@
             border: 1px solid #f0f4fa;
             flex: 0 1 auto;
             transition: all 0.05s ease;
+            cursor: pointer;
         }
 
         .key.active {
@@ -265,11 +267,15 @@
             <div class="input-hint" id="hintText">a · press "K"</div>
         </div>
 
-        <!-- Toggle control for hint -->
+        <!-- Control bar with hint and sound toggles -->
         <div class="control-bar">
             <div class="toggle-container">
                 <span>🔤 Show hint</span>
                 <input type="checkbox" id="hintToggle" checked>
+            </div>
+            <div class="toggle-container">
+                <span>🔊 Sound</span>
+                <input type="checkbox" id="soundToggle" checked>
             </div>
         </div>
 
@@ -287,7 +293,7 @@
             <div class="message" id="feedbackMsg">⌨️ Type the letter...</div>
         </div>
         
-        <div class="footer-note">Dubeolsik · press keys QWERTY · Auto-advances when correct</div>
+        <div class="footer-note">Dubeolsik · press keys QWERTY · Auto-advances when correct · Click keys to hear sound</div>
     </div>
 
     <script>
@@ -339,6 +345,7 @@
             let currentEngKey = 'K';    // default: ㅏ
             let score = 0;
             let hintVisible = true;
+            let soundEnabled = true;
             let canAnswer = true;        // prevent double-counting same letter
 
             // DOM elements
@@ -347,9 +354,36 @@
             const feedbackMsgEl = document.getElementById('feedbackMsg');
             const scoreDisplay = document.getElementById('scoreDisplay');
             const hintToggle = document.getElementById('hintToggle');
+            const soundToggle = document.getElementById('soundToggle');
             const row1 = document.getElementById('row1');
             const row2 = document.getElementById('row2');
             const row3 = document.getElementById('row3');
+
+            // ---------- Speech synthesis function ----------
+            function speakKorean(text) {
+                if (!soundEnabled) return;
+                
+                // Cancel any ongoing speech
+                window.speechSynthesis.cancel();
+                
+                // Create utterance
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ko-KR';
+                utterance.rate = 0.7; // Slower for beginners
+                utterance.pitch = 1.0;
+                
+                // Try to find a Korean voice
+                const voices = window.speechSynthesis.getVoices();
+                const koreanVoice = voices.find(voice => voice.lang === 'ko-KR');
+                if (koreanVoice) {
+                    utterance.voice = koreanVoice;
+                }
+                
+                window.speechSynthesis.speak(utterance);
+            }
+
+            // Pre-load voices (they load asynchronously)
+            window.speechSynthesis.getVoices();
 
             // ---------- Render keyboard by QWERTY rows ----------
             function renderKeyboard() {
@@ -381,6 +415,13 @@
                     <span class="roman">${item.rom}</span>
                     <span class="eng">${letter}</span>
                 `;
+                
+                // Add click handler to play sound
+                keyDiv.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    speakKorean(item.kr);
+                });
+                
                 parentRow.appendChild(keyDiv);
             }
 
@@ -426,6 +467,11 @@
                 scoreDisplay.innerText = score;
                 feedbackMsgEl.innerText = '✅ Correct! +1';
                 feedbackMsgEl.style.background = '#1f5f3a';
+                
+                // Speak the correct letter!
+                const currentKoreanChar = MAP[currentEngKey].kr;
+                speakKorean(currentKoreanChar);
+                
                 canAnswer = false;
 
                 // Auto advance to next question after a short delay
@@ -484,6 +530,11 @@
                 updateHintVisibility();
             });
 
+            // Sound toggle
+            soundToggle.addEventListener('change', (e) => {
+                soundEnabled = e.target.checked;
+            });
+
             // ---------- Initialize ----------
             function init() {
                 renderKeyboard();
@@ -492,6 +543,8 @@
                 scoreDisplay.innerText = '0';
                 hintVisible = true;
                 hintToggle.checked = true;
+                soundEnabled = true;
+                soundToggle.checked = true;
                 updateHintVisibility();
             }
 
