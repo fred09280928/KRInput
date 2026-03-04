@@ -275,6 +275,23 @@
             border-left: 6px solid #ffd966;
         }
 
+        /* Memo display area */
+        .memo-area {
+            background: #1e2a36;
+            color: #ffd966;
+            padding: 10px 20px;
+            border-radius: 30px;
+            margin-top: 10px;
+            font-size: 1.1rem;
+            text-align: center;
+            border: 2px solid #ffd966;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+        }
+
         .footer-note {
             text-align: center;
             color: #6c8aa3;
@@ -314,6 +331,11 @@
             </div>
         </div>
 
+        <!-- Memo display area for your custom sentences -->
+        <div class="memo-area" id="memoDisplay">
+            Loading your custom memos...
+        </div>
+
         <!-- Keyboard in QWERTY layout -->
         <div class="keyboard-container">
             <!-- Row 1: Q W E R T Y U I O P -->
@@ -328,7 +350,7 @@
             <div class="message" id="feedbackMsg">⌨️ Type the letter...</div>
         </div>
         
-        <div class="footer-note">Dubeolsik · press keys QWERTY · Auto-advances when correct · Click any key or play button for sound</div>
+        <div class="footer-note">Dubeolsik · press keys QWERTY · Auto-advances when correct · Custom memos from KRMemo.txt</div>
     </div>
 
     <script>
@@ -380,8 +402,11 @@
             let currentEngKey = 'K';    // default: ㅏ
             let score = 0;
             let hintVisible = true;
-            let autoPlayEnabled = true;  // renamed from soundEnabled
-            let canAnswer = true;        // prevent double-counting same letter
+            let autoPlayEnabled = true;
+            let canAnswer = true;
+            
+            // Memo storage: maps Korean character to your custom sentence
+            let memoMap = {};
 
             // DOM elements
             const currentCharEl = document.getElementById('currentChar');
@@ -391,51 +416,76 @@
             const hintToggle = document.getElementById('hintToggle');
             const autoPlayToggle = document.getElementById('autoPlayToggle');
             const playButton = document.getElementById('playButton');
+            const memoDisplay = document.getElementById('memoDisplay');
             const row1 = document.getElementById('row1');
             const row2 = document.getElementById('row2');
             const row3 = document.getElementById('row3');
 
+            // ---------- Load KRMemo.txt file ----------
+            async function loadMemoFile() {
+                try {
+                    const response = await fetch('KRMemo.txt');
+                    const text = await response.text();
+                    
+                    // Parse each line: "ㅂ: big QQ"
+                    const lines = text.split('\n');
+                    lines.forEach(line => {
+                        line = line.trim();
+                        if (line && line.includes(':')) {
+                            const [koreanChar, memo] = line.split(':').map(s => s.trim());
+                            memoMap[koreanChar] = memo;
+                        }
+                    });
+                    
+                    console.log('Loaded memos:', Object.keys(memoMap).length);
+                    updateMemoDisplay(); // Show memo for current character
+                    
+                } catch (error) {
+                    console.log('No KRMemo.txt found - continuing without custom memos');
+                    memoDisplay.innerText = 'Create KRMemo.txt for custom memory aids!';
+                }
+            }
+
+            // ---------- Update memo display for current character ----------
+            function updateMemoDisplay() {
+                const currentKoreanChar = MAP[currentEngKey].kr;
+                const memo = memoMap[currentKoreanChar];
+                if (memo) {
+                    memoDisplay.innerText = `💭 ${memo}`;
+                } else {
+                    memoDisplay.innerText = '💭 No memo for this character yet';
+                }
+            }
+
             // ---------- Speech synthesis function ----------
             function speakKorean(text) {
-                // This function ALWAYS plays sound regardless of autoPlay setting
-                // It's called by manual controls (play button, key clicks)
-                
-                // Cancel any ongoing speech
+                if (!text) return;
                 window.speechSynthesis.cancel();
-                
-                // Create utterance
                 const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'ko-KR';
-                utterance.rate = 0.7; // Slower for beginners
+                utterance.lang = text.match(/[ㄱ-ㅎㅏ-ㅣ가-힣]/) ? 'ko-KR' : 'en-US';
+                utterance.rate = 0.8;
                 utterance.pitch = 1.0;
                 
-                // Try to find a Korean voice
                 const voices = window.speechSynthesis.getVoices();
-                const koreanVoice = voices.find(voice => voice.lang === 'ko-KR');
-                if (koreanVoice) {
-                    utterance.voice = koreanVoice;
-                }
+                const targetVoice = voices.find(voice => voice.lang === (text.match(/[ㄱ-ㅎㅏ-ㅣ가-힣]/) ? 'ko-KR' : 'en-US'));
+                if (targetVoice) utterance.voice = targetVoice;
                 
                 window.speechSynthesis.speak(utterance);
             }
 
             // ---------- Auto-play sound function (respects toggle) ----------
             function autoSpeakKorean(text) {
-                // Only plays if autoPlay is enabled
                 if (!autoPlayEnabled) return;
-                speakKorean(text); // Reuse the main function
+                speakKorean(text);
             }
 
-            // Pre-load voices (they load asynchronously)
+            // Pre-load voices
             window.speechSynthesis.getVoices();
 
-            // ---------- Render keyboard by QWERTY rows ----------
+            // ---------- Render keyboard ----------
             function renderKeyboard() {
-                // Row 1: Q W E R T Y U I O P
                 const row1Keys = ['Q','W','E','R','T','Y','U','I','O','P'];
-                // Row 2: A S D F G H J K L
                 const row2Keys = ['A','S','D','F','G','H','J','K','L'];
-                // Row 3: Z X C V B N M
                 const row3Keys = ['Z','X','C','V','B','N','M'];
 
                 row1.innerHTML = '';
@@ -460,10 +510,13 @@
                     <span class="eng">${letter}</span>
                 `;
                 
-                // Add click handler to play sound (ALWAYS works, ignores autoPlay)
                 keyDiv.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    speakKorean(item.kr); // Manual click - always plays
+                    speakKorean(item.kr); // Korean sound
+                    // Also speak the memo if available (English)
+                    if (memoMap[item.kr]) {
+                        setTimeout(() => speakKorean(memoMap[item.kr]), 500);
+                    }
                 });
                 
                 parentRow.appendChild(keyDiv);
@@ -486,7 +539,7 @@
                 }
             }
 
-            // ---------- Generate random key (mixed mode always) ----------
+            // ---------- Generate random key ----------
             function getRandomKey() {
                 return ALL_KEYS[Math.floor(Math.random() * ALL_KEYS.length)];
             }
@@ -499,73 +552,80 @@
                 currentCharEl.innerText = data.kr;
                 hintTextEl.innerText = `${data.rom} · press "${newKey}"`;
                 highlightKey(newKey);
-                // Reset answer flag for new letter
+                updateMemoDisplay(); // Update the memo for new character
                 canAnswer = true;
-                
-                // Auto-play the new character if enabled
                 autoSpeakKorean(data.kr);
             }
 
             // ---------- Handle correct answer ----------
             function handleCorrect() {
-                if (!canAnswer) return; // already answered this letter
+                if (!canAnswer) return;
 
                 score += 1;
                 scoreDisplay.innerText = score;
                 feedbackMsgEl.innerText = '✅ Correct! +1';
                 feedbackMsgEl.style.background = '#1f5f3a';
                 
-                // Auto-play the correct letter (respects toggle)
                 const currentKoreanChar = MAP[currentEngKey].kr;
                 autoSpeakKorean(currentKoreanChar);
                 
                 canAnswer = false;
 
-                // Auto advance to next question after a short delay
                 setTimeout(() => {
                     setNewCharacter();
-                    // Reset feedback message to neutral
                     feedbackMsgEl.innerText = '⌨️ Type the letter...';
                     feedbackMsgEl.style.background = '#273a4b';
-                }, 600); // 600ms delay so user sees the success message
+                }, 600);
             }
 
+            // ---------- Handle wrong answer - THIS IS WHERE MAGIC HAPPENS! ----------
             function handleWrong() {
-                if (!canAnswer) return; // already correct, ignore further presses
+                if (!canAnswer) return;
+                
                 feedbackMsgEl.innerText = '❌ Try again';
                 feedbackMsgEl.style.background = '#9e2d2d';
                 
-                // Auto-play the correct letter when wrong (to help learning)
-                // This respects the autoPlay toggle
                 const currentKoreanChar = MAP[currentEngKey].kr;
+                
+                // 1. Play the Korean pronunciation
                 autoSpeakKorean(currentKoreanChar);
+                
+                // 2. Check if there's a custom memo and play it (English)
+                const memo = memoMap[currentKoreanChar];
+                if (memo && autoPlayEnabled) {
+                    // Wait for Korean sound to finish (approx 500ms), then play English memo
+                    setTimeout(() => {
+                        speakKorean(memo); // This plays the English memo
+                        
+                        // Also show it in the feedback temporarily
+                        const originalMsg = feedbackMsgEl.innerText;
+                        feedbackMsgEl.innerText = `📝 ${memo}`;
+                        setTimeout(() => {
+                            feedbackMsgEl.innerText = originalMsg;
+                        }, 2000);
+                    }, 600);
+                }
             }
 
             // ---------- Keydown handler ----------
             function onKeyDown(e) {
                 const key = e.key.toUpperCase();
-                // Ignore modifiers and non-letters
                 if (e.altKey || e.ctrlKey || e.metaKey || key.length > 1) return;
-
-                // Check if key exists in map
                 if (!MAP[key]) return;
-
                 e.preventDefault();
 
-                // Compare
                 if (key === currentEngKey) {
                     handleCorrect();
                 } else {
                     handleWrong();
                 }
 
-                // Flash the pressed key
                 const targetKey = Array.from(document.querySelectorAll('.key')).find(k => k.dataset.letter === key);
                 if (targetKey) {
                     targetKey.style.background = '#f5e56b';
                     setTimeout(() => {
                         if (key === currentEngKey) {
-                            targetKey.style.background = ''; // active class will handle
+                            targetKey.style.background = '';
                         } else {
                             targetKey.style.background = '';
                         }
@@ -576,23 +636,25 @@
             // ---------- Event listeners ----------
             window.addEventListener('keydown', onKeyDown);
 
-            // Hint toggle
             hintToggle.addEventListener('change', (e) => {
                 hintVisible = e.target.checked;
                 updateHintVisibility();
             });
 
-            // AutoPlay toggle
             autoPlayToggle.addEventListener('change', (e) => {
                 autoPlayEnabled = e.target.checked;
             });
 
-            // Manual play button - always speaks current character
             playButton.addEventListener('click', () => {
                 const currentKoreanChar = MAP[currentEngKey].kr;
-                speakKorean(currentKoreanChar); // Always plays regardless of autoPlay
+                speakKorean(currentKoreanChar);
                 
-                // Brief visual feedback
+                // Also speak the memo if available
+                const memo = memoMap[currentKoreanChar];
+                if (memo) {
+                    setTimeout(() => speakKorean(memo), 500);
+                }
+                
                 playButton.style.background = '#f5e56b';
                 setTimeout(() => {
                     playButton.style.background = '#ffd966';
@@ -600,8 +662,9 @@
             });
 
             // ---------- Initialize ----------
-            function init() {
+            async function init() {
                 renderKeyboard();
+                await loadMemoFile(); // Load your custom memos first
                 setNewCharacter();
                 score = 0;
                 scoreDisplay.innerText = '0';
@@ -614,7 +677,6 @@
 
             init();
 
-            // Mobile: prevent zoom on double-tap
             document.addEventListener('touchstart', (e) => {
                 if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') return;
             }, { passive: false });
