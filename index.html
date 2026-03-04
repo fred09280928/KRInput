@@ -79,6 +79,7 @@
             text-align: center;
             box-shadow: inset 0 8px 12px rgba(0,0,0,0.1), 0 10px 20px rgba(0,0,0,0.15);
             border: 3px solid white;
+            position: relative;
         }
 
         .korean-char {
@@ -108,12 +109,42 @@
             margin: 0;
         }
 
+        /* Play button for manual sound */
+        .play-button {
+            position: absolute;
+            bottom: -20px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #ffd966;
+            border: 4px solid white;
+            box-shadow: 0 6px 0 #b38f40, 0 8px 15px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: all 0.05s linear;
+            z-index: 10;
+        }
+
+        .play-button:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #b38f40, 0 8px 15px rgba(0,0,0,0.2);
+        }
+
+        .play-button span {
+            transform: scale(1.2);
+            display: inline-block;
+        }
+
         /* Control bar for hint and sound toggles */
         .control-bar {
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            margin: 5px 0 15px;
+            margin: 25px 0 15px;
             gap: 15px;
             flex-wrap: wrap;
         }
@@ -265,17 +296,21 @@
         <div class="character-area">
             <div class="korean-char" id="currentChar">ㅏ</div>
             <div class="input-hint" id="hintText">a · press "K"</div>
+            <!-- Manual play button -->
+            <div class="play-button" id="playButton" title="Pronounce this letter">
+                <span>🔊</span>
+            </div>
         </div>
 
-        <!-- Control bar with hint and sound toggles -->
+        <!-- Control bar with hint and autoplay sound toggles -->
         <div class="control-bar">
             <div class="toggle-container">
                 <span>🔤 Show hint</span>
                 <input type="checkbox" id="hintToggle" checked>
             </div>
             <div class="toggle-container">
-                <span>🔊 Sound</span>
-                <input type="checkbox" id="soundToggle" checked>
+                <span>🔊 AutoPlay Sound</span>
+                <input type="checkbox" id="autoPlayToggle" checked>
             </div>
         </div>
 
@@ -293,7 +328,7 @@
             <div class="message" id="feedbackMsg">⌨️ Type the letter...</div>
         </div>
         
-        <div class="footer-note">Dubeolsik · press keys QWERTY · Auto-advances when correct · Click keys to hear sound</div>
+        <div class="footer-note">Dubeolsik · press keys QWERTY · Auto-advances when correct · Click any key or play button for sound</div>
     </div>
 
     <script>
@@ -345,7 +380,7 @@
             let currentEngKey = 'K';    // default: ㅏ
             let score = 0;
             let hintVisible = true;
-            let soundEnabled = true;
+            let autoPlayEnabled = true;  // renamed from soundEnabled
             let canAnswer = true;        // prevent double-counting same letter
 
             // DOM elements
@@ -354,14 +389,16 @@
             const feedbackMsgEl = document.getElementById('feedbackMsg');
             const scoreDisplay = document.getElementById('scoreDisplay');
             const hintToggle = document.getElementById('hintToggle');
-            const soundToggle = document.getElementById('soundToggle');
+            const autoPlayToggle = document.getElementById('autoPlayToggle');
+            const playButton = document.getElementById('playButton');
             const row1 = document.getElementById('row1');
             const row2 = document.getElementById('row2');
             const row3 = document.getElementById('row3');
 
             // ---------- Speech synthesis function ----------
             function speakKorean(text) {
-                if (!soundEnabled) return;
+                // This function ALWAYS plays sound regardless of autoPlay setting
+                // It's called by manual controls (play button, key clicks)
                 
                 // Cancel any ongoing speech
                 window.speechSynthesis.cancel();
@@ -380,6 +417,13 @@
                 }
                 
                 window.speechSynthesis.speak(utterance);
+            }
+
+            // ---------- Auto-play sound function (respects toggle) ----------
+            function autoSpeakKorean(text) {
+                // Only plays if autoPlay is enabled
+                if (!autoPlayEnabled) return;
+                speakKorean(text); // Reuse the main function
             }
 
             // Pre-load voices (they load asynchronously)
@@ -416,10 +460,10 @@
                     <span class="eng">${letter}</span>
                 `;
                 
-                // Add click handler to play sound
+                // Add click handler to play sound (ALWAYS works, ignores autoPlay)
                 keyDiv.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    speakKorean(item.kr);
+                    speakKorean(item.kr); // Manual click - always plays
                 });
                 
                 parentRow.appendChild(keyDiv);
@@ -457,6 +501,9 @@
                 highlightKey(newKey);
                 // Reset answer flag for new letter
                 canAnswer = true;
+                
+                // Auto-play the new character if enabled
+                autoSpeakKorean(data.kr);
             }
 
             // ---------- Handle correct answer ----------
@@ -468,9 +515,9 @@
                 feedbackMsgEl.innerText = '✅ Correct! +1';
                 feedbackMsgEl.style.background = '#1f5f3a';
                 
-                // Speak the correct letter!
+                // Auto-play the correct letter (respects toggle)
                 const currentKoreanChar = MAP[currentEngKey].kr;
-                speakKorean(currentKoreanChar);
+                autoSpeakKorean(currentKoreanChar);
                 
                 canAnswer = false;
 
@@ -487,6 +534,11 @@
                 if (!canAnswer) return; // already correct, ignore further presses
                 feedbackMsgEl.innerText = '❌ Try again';
                 feedbackMsgEl.style.background = '#9e2d2d';
+                
+                // Auto-play the correct letter when wrong (to help learning)
+                // This respects the autoPlay toggle
+                const currentKoreanChar = MAP[currentEngKey].kr;
+                autoSpeakKorean(currentKoreanChar);
             }
 
             // ---------- Keydown handler ----------
@@ -530,9 +582,21 @@
                 updateHintVisibility();
             });
 
-            // Sound toggle
-            soundToggle.addEventListener('change', (e) => {
-                soundEnabled = e.target.checked;
+            // AutoPlay toggle
+            autoPlayToggle.addEventListener('change', (e) => {
+                autoPlayEnabled = e.target.checked;
+            });
+
+            // Manual play button - always speaks current character
+            playButton.addEventListener('click', () => {
+                const currentKoreanChar = MAP[currentEngKey].kr;
+                speakKorean(currentKoreanChar); // Always plays regardless of autoPlay
+                
+                // Brief visual feedback
+                playButton.style.background = '#f5e56b';
+                setTimeout(() => {
+                    playButton.style.background = '#ffd966';
+                }, 150);
             });
 
             // ---------- Initialize ----------
@@ -543,8 +607,8 @@
                 scoreDisplay.innerText = '0';
                 hintVisible = true;
                 hintToggle.checked = true;
-                soundEnabled = true;
-                soundToggle.checked = true;
+                autoPlayEnabled = true;
+                autoPlayToggle.checked = true;
                 updateHintVisibility();
             }
 
