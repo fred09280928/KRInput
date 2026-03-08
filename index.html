@@ -92,51 +92,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
-        }
-
-        .speaker-btn {
-            position: absolute;
-            top: 20px;
-            right: 25px;
-            background: #4a90e2;
-            border: none;
-            border-radius: 50%;
-            width: 44px;
-            height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            transition: all 0.2s ease;
-            z-index: 10;
-        }
-
-        .speaker-btn:hover {
-            background: #357ae8;
-            transform: scale(1.05);
-        }
-
-        .speaker-btn:active {
-            transform: scale(0.95);
-        }
-
-        .speaker-btn svg {
-            width: 22px;
-            height: 22px;
-            fill: white;
-        }
-
-        .speaker-btn.playing {
-            background: #2e7d32;
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(46, 125, 50, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(46, 125, 50, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(46, 125, 50, 0); }
         }
 
         .input-hint {
@@ -154,13 +109,44 @@
             margin: 0;
         }
 
-        /* Control bar for hint toggle */
+        /* Play button for manual sound */
+        .play-button {
+            position: absolute;
+            bottom: -20px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #ffd966;
+            border: 4px solid white;
+            box-shadow: 0 6px 0 #b38f40, 0 8px 15px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: all 0.05s linear;
+            z-index: 10;
+        }
+
+        .play-button:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #b38f40, 0 8px 15px rgba(0,0,0,0.2);
+        }
+
+        .play-button span {
+            transform: scale(1.2);
+            display: inline-block;
+        }
+
+        /* Control bar for hint and sound toggles */
         .control-bar {
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            margin: 5px 0 15px;
+            margin: 25px 0 15px;
             gap: 15px;
+            flex-wrap: wrap;
         }
 
         .toggle-container {
@@ -174,29 +160,6 @@
             font-weight: 500;
             color: #1e2a36;
             border: 1px solid white;
-        }
-
-        .audio-controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: #d9e2ec;
-            padding: 8px 16px;
-            border-radius: 40px;
-            font-size: 0.95rem;
-            font-weight: 500;
-            color: #1e2a36;
-            border: 1px solid white;
-        }
-
-        .audio-controls select {
-            background: white;
-            border: 1px solid #b0bec5;
-            border-radius: 20px;
-            padding: 4px 12px;
-            font-size: 0.9rem;
-            color: #1e2a36;
-            cursor: pointer;
         }
 
         .toggle-container input[type="checkbox"] {
@@ -259,6 +222,7 @@
             border: 1px solid #f0f4fa;
             flex: 0 1 auto;
             transition: all 0.05s ease;
+            cursor: pointer;
         }
 
         .key.active {
@@ -311,6 +275,23 @@
             border-left: 6px solid #ffd966;
         }
 
+        /* Memo display area */
+        .memo-area {
+            background: #1e2a36;
+            color: #ffd966;
+            padding: 10px 20px;
+            border-radius: 30px;
+            margin-top: 10px;
+            font-size: 1.1rem;
+            text-align: center;
+            border: 2px solid #ffd966;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+        }
+
         .footer-note {
             text-align: center;
             color: #6c8aa3;
@@ -330,30 +311,29 @@
         </div>
 
         <div class="character-area">
-            <button class="speaker-btn" id="speakerBtn" title="Play pronunciation">
-                <svg viewBox="0 0 24 24">
-                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                </svg>
-            </button>
             <div class="korean-char" id="currentChar">ㅏ</div>
             <div class="input-hint" id="hintText">a · press "K"</div>
+            <!-- Manual play button -->
+            <div class="play-button" id="playButton" title="Pronounce this letter">
+                <span>🔊</span>
+            </div>
         </div>
 
-        <!-- Toggle control for hint and audio -->
+        <!-- Control bar with hint and autoplay sound toggles -->
         <div class="control-bar">
             <div class="toggle-container">
                 <span>🔤 Show hint</span>
                 <input type="checkbox" id="hintToggle" checked>
             </div>
-            <div class="audio-controls">
-                <span>🔊 Auto-play</span>
-                <input type="checkbox" id="autoPlayToggle">
-                <select id="voiceSpeed">
-                    <option value="1">Normal</option>
-                    <option value="0.8">Slow</option>
-                    <option value="0.6">Very Slow</option>
-                </select>
+            <div class="toggle-container">
+                <span>🔊 AutoPlay Sound</span>
+                <input type="checkbox" id="autoPlayToggle" checked>
             </div>
+        </div>
+
+        <!-- Memo display area for your custom sentences -->
+        <div class="memo-area" id="memoDisplay">
+            Loading your custom memos...
         </div>
 
         <!-- Keyboard in QWERTY layout -->
@@ -370,7 +350,7 @@
             <div class="message" id="feedbackMsg">⌨️ Type the letter...</div>
         </div>
         
-        <div class="footer-note">Dubeolsik · press keys QWERTY · Auto-advances when correct</div>
+        <div class="footer-note">Dubeolsik · press keys QWERTY · Auto-advances when correct · Custom memos from KRMemo.txt</div>
     </div>
 
     <script>
@@ -422,7 +402,11 @@
             let currentEngKey = 'K';    // default: ㅏ
             let score = 0;
             let hintVisible = true;
-            let canAnswer = true;        // prevent double-counting same letter
+            let autoPlayEnabled = true;
+            let canAnswer = true;
+            
+            // Memo storage: maps Korean character to your custom sentence
+            let memoMap = {};
 
             // DOM elements
             const currentCharEl = document.getElementById('currentChar');
@@ -430,17 +414,78 @@
             const feedbackMsgEl = document.getElementById('feedbackMsg');
             const scoreDisplay = document.getElementById('scoreDisplay');
             const hintToggle = document.getElementById('hintToggle');
+            const autoPlayToggle = document.getElementById('autoPlayToggle');
+            const playButton = document.getElementById('playButton');
+            const memoDisplay = document.getElementById('memoDisplay');
             const row1 = document.getElementById('row1');
             const row2 = document.getElementById('row2');
             const row3 = document.getElementById('row3');
 
-            // ---------- Render keyboard by QWERTY rows ----------
+            // ---------- Load KRMemo.txt file ----------
+            async function loadMemoFile() {
+                try {
+                    const response = await fetch('KRMemo.txt');
+                    const text = await response.text();
+                    
+                    // Parse each line: "ㅂ: big QQ"
+                    const lines = text.split('\n');
+                    lines.forEach(line => {
+                        line = line.trim();
+                        if (line && line.includes(':')) {
+                            const [koreanChar, memo] = line.split(':').map(s => s.trim());
+                            memoMap[koreanChar] = memo;
+                        }
+                    });
+                    
+                    console.log('Loaded memos:', Object.keys(memoMap).length);
+                    updateMemoDisplay(); // Show memo for current character
+                    
+                } catch (error) {
+                    console.log('No KRMemo.txt found - continuing without custom memos');
+                    memoDisplay.innerText = 'Create KRMemo.txt for custom memory aids!';
+                }
+            }
+
+            // ---------- Update memo display for current character ----------
+            function updateMemoDisplay() {
+                const currentKoreanChar = MAP[currentEngKey].kr;
+                const memo = memoMap[currentKoreanChar];
+                if (memo) {
+                    memoDisplay.innerText = `💭 ${memo}`;
+                } else {
+                    memoDisplay.innerText = '💭 No memo for this character yet';
+                }
+            }
+
+            // ---------- Speech synthesis function ----------
+            function speakKorean(text) {
+                if (!text) return;
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = text.match(/[ㄱ-ㅎㅏ-ㅣ가-힣]/) ? 'ko-KR' : 'en-US';
+                utterance.rate = 0.8;
+                utterance.pitch = 1.0;
+                
+                const voices = window.speechSynthesis.getVoices();
+                const targetVoice = voices.find(voice => voice.lang === (text.match(/[ㄱ-ㅎㅏ-ㅣ가-힣]/) ? 'ko-KR' : 'en-US'));
+                if (targetVoice) utterance.voice = targetVoice;
+                
+                window.speechSynthesis.speak(utterance);
+            }
+
+            // ---------- Auto-play sound function (respects toggle) ----------
+            function autoSpeakKorean(text) {
+                if (!autoPlayEnabled) return;
+                speakKorean(text);
+            }
+
+            // Pre-load voices
+            window.speechSynthesis.getVoices();
+
+            // ---------- Render keyboard ----------
             function renderKeyboard() {
-                // Row 1: Q W E R T Y U I O P
                 const row1Keys = ['Q','W','E','R','T','Y','U','I','O','P'];
-                // Row 2: A S D F G H J K L
                 const row2Keys = ['A','S','D','F','G','H','J','K','L'];
-                // Row 3: Z X C V B N M
                 const row3Keys = ['Z','X','C','V','B','N','M'];
 
                 row1.innerHTML = '';
@@ -464,6 +509,16 @@
                     <span class="roman">${item.rom}</span>
                     <span class="eng">${letter}</span>
                 `;
+                
+                keyDiv.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    speakKorean(item.kr); // Korean sound
+                    // Also speak the memo if available (English)
+                    if (memoMap[item.kr]) {
+                        setTimeout(() => speakKorean(memoMap[item.kr]), 500);
+                    }
+                });
+                
                 parentRow.appendChild(keyDiv);
             }
 
@@ -484,7 +539,7 @@
                 }
             }
 
-            // ---------- Generate random key (mixed mode always) ----------
+            // ---------- Generate random key ----------
             function getRandomKey() {
                 return ALL_KEYS[Math.floor(Math.random() * ALL_KEYS.length)];
             }
@@ -497,62 +552,80 @@
                 currentCharEl.innerText = data.kr;
                 hintTextEl.innerText = `${data.rom} · press "${newKey}"`;
                 highlightKey(newKey);
-                // Reset answer flag for new letter
+                updateMemoDisplay(); // Update the memo for new character
                 canAnswer = true;
-                // Check for auto-play
-                checkAutoPlay();
+                autoSpeakKorean(data.kr);
             }
 
             // ---------- Handle correct answer ----------
             function handleCorrect() {
-                if (!canAnswer) return; // already answered this letter
+                if (!canAnswer) return;
 
                 score += 1;
                 scoreDisplay.innerText = score;
                 feedbackMsgEl.innerText = '✅ Correct! +1';
                 feedbackMsgEl.style.background = '#1f5f3a';
+                
+                const currentKoreanChar = MAP[currentEngKey].kr;
+                autoSpeakKorean(currentKoreanChar);
+                
                 canAnswer = false;
 
-                // Auto advance to next question after a short delay
                 setTimeout(() => {
                     setNewCharacter();
-                    // Reset feedback message to neutral
                     feedbackMsgEl.innerText = '⌨️ Type the letter...';
                     feedbackMsgEl.style.background = '#273a4b';
-                }, 600); // 600ms delay so user sees the success message
+                }, 600);
             }
 
+            // ---------- Handle wrong answer - THIS IS WHERE MAGIC HAPPENS! ----------
             function handleWrong() {
-                if (!canAnswer) return; // already correct, ignore further presses
+                if (!canAnswer) return;
+                
                 feedbackMsgEl.innerText = '❌ Try again';
                 feedbackMsgEl.style.background = '#9e2d2d';
+                
+                const currentKoreanChar = MAP[currentEngKey].kr;
+                
+                // 1. Play the Korean pronunciation
+                autoSpeakKorean(currentKoreanChar);
+                
+                // 2. Check if there's a custom memo and play it (English)
+                const memo = memoMap[currentKoreanChar];
+                if (memo && autoPlayEnabled) {
+                    // Wait for Korean sound to finish (approx 500ms), then play English memo
+                    setTimeout(() => {
+                        speakKorean(memo); // This plays the English memo
+                        
+                        // Also show it in the feedback temporarily
+                        const originalMsg = feedbackMsgEl.innerText;
+                        feedbackMsgEl.innerText = `📝 ${memo}`;
+                        setTimeout(() => {
+                            feedbackMsgEl.innerText = originalMsg;
+                        }, 2000);
+                    }, 600);
+                }
             }
 
             // ---------- Keydown handler ----------
             function onKeyDown(e) {
                 const key = e.key.toUpperCase();
-                // Ignore modifiers and non-letters
                 if (e.altKey || e.ctrlKey || e.metaKey || key.length > 1) return;
-
-                // Check if key exists in map
                 if (!MAP[key]) return;
-
                 e.preventDefault();
 
-                // Compare
                 if (key === currentEngKey) {
                     handleCorrect();
                 } else {
                     handleWrong();
                 }
 
-                // Flash the pressed key
                 const targetKey = Array.from(document.querySelectorAll('.key')).find(k => k.dataset.letter === key);
                 if (targetKey) {
                     targetKey.style.background = '#f5e56b';
                     setTimeout(() => {
                         if (key === currentEngKey) {
-                            targetKey.style.background = ''; // active class will handle
+                            targetKey.style.background = '';
                         } else {
                             targetKey.style.background = '';
                         }
@@ -560,131 +633,50 @@
                 }
             }
 
-            // ---------- Web Speech API Integration ----------
-            const speakerBtn = document.getElementById('speakerBtn');
-            const autoPlayToggle = document.getElementById('autoPlayToggle');
-            const voiceSpeed = document.getElementById('voiceSpeed');
-            
-            let speechSynthesis = window.speechSynthesis;
-            let isSpeaking = false;
-            let autoPlayEnabled = false;
-            
-            // Check if Web Speech API is available
-            function isSpeechSupported() {
-                return 'speechSynthesis' in window;
-            }
-            
-            // Speak the current Korean character
-            function speakCharacter() {
-                if (!isSpeechSupported()) {
-                    feedbackMsgEl.innerText = '❌ Speech not supported in this browser';
-                    feedbackMsgEl.style.background = '#9e2d2d';
-                    return;
-                }
-                
-                if (isSpeaking) {
-                    speechSynthesis.cancel();
-                }
-                
-                const data = MAP[currentEngKey];
-                if (!data) return;
-                
-                const utterance = new SpeechSynthesisUtterance(data.kr);
-                
-                // Set Korean language if available
-                utterance.lang = 'ko-KR';
-                
-                // Set speed from dropdown
-                utterance.rate = parseFloat(voiceSpeed.value);
-                
-                // Visual feedback
-                speakerBtn.classList.add('playing');
-                isSpeaking = true;
-                
-                utterance.onend = function() {
-                    speakerBtn.classList.remove('playing');
-                    isSpeaking = false;
-                };
-                
-                utterance.onerror = function() {
-                    speakerBtn.classList.remove('playing');
-                    isSpeaking = false;
-                    feedbackMsgEl.innerText = '❌ Could not play audio';
-                    feedbackMsgEl.style.background = '#9e2d2d';
-                    setTimeout(() => {
-                        feedbackMsgEl.innerText = '⌨️ Type the letter...';
-                        feedbackMsgEl.style.background = '#273a4b';
-                    }, 2000);
-                };
-                
-                speechSynthesis.speak(utterance);
-            }
-            
-            // Auto-play if enabled
-            function checkAutoPlay() {
-                if (autoPlayEnabled) {
-                    // Small delay so user can see the character first
-                    setTimeout(speakCharacter, 300);
-                }
-            }
-            
             // ---------- Event listeners ----------
             window.addEventListener('keydown', onKeyDown);
 
-            // Hint toggle
             hintToggle.addEventListener('change', (e) => {
                 hintVisible = e.target.checked;
                 updateHintVisibility();
             });
-            
-            // Speaker button
-            speakerBtn.addEventListener('click', speakCharacter);
-            
-            // Auto-play toggle
+
             autoPlayToggle.addEventListener('change', (e) => {
                 autoPlayEnabled = e.target.checked;
-                if (autoPlayEnabled) {
-                    // Speak current character when auto-play is enabled
-                    speakCharacter();
-                }
             });
-            
-            // Voice speed change
-            voiceSpeed.addEventListener('change', () => {
-                // If currently speaking, restart with new speed
-                if (isSpeaking) {
-                    speechSynthesis.cancel();
-                    setTimeout(speakCharacter, 100);
+
+            playButton.addEventListener('click', () => {
+                const currentKoreanChar = MAP[currentEngKey].kr;
+                speakKorean(currentKoreanChar);
+                
+                // Also speak the memo if available
+                const memo = memoMap[currentKoreanChar];
+                if (memo) {
+                    setTimeout(() => speakKorean(memo), 500);
                 }
+                
+                playButton.style.background = '#f5e56b';
+                setTimeout(() => {
+                    playButton.style.background = '#ffd966';
+                }, 150);
             });
 
             // ---------- Initialize ----------
-            function init() {
+            async function init() {
                 renderKeyboard();
+                await loadMemoFile(); // Load your custom memos first
                 setNewCharacter();
                 score = 0;
                 scoreDisplay.innerText = '0';
                 hintVisible = true;
                 hintToggle.checked = true;
+                autoPlayEnabled = true;
+                autoPlayToggle.checked = true;
                 updateHintVisibility();
-                
-                // Initialize audio settings
-                autoPlayEnabled = false;
-                autoPlayToggle.checked = false;
-                
-                // Check if speech is supported
-                if (!isSpeechSupported()) {
-                    speakerBtn.disabled = true;
-                    speakerBtn.title = 'Speech not supported in this browser';
-                    speakerBtn.style.opacity = '0.5';
-                    autoPlayToggle.disabled = true;
-                    voiceSpeed.disabled = true;
-                }
             }
 
             init();
 
-            // Mobile: prevent zoom on double-tap
             document.addEventListener('touchstart', (e) => {
                 if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') return;
             }, { passive: false });
