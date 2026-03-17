@@ -1,26 +1,33 @@
-ㅂ: boutique	
-ㅈ: JaW
-ㄷ: DEad
-ㄱ: Grrrr
-ㅅ: Sit
-ㅁ: MamA
-ㄴ: North South
-ㅇ: O D Overdose
-ㄹ: two leaf
-ㅎ: Hug
-ㅋ: Kizz
-ㅌ: Tax
-ㅊ: Chill
-ㅍ: Pave
-ㅛ: YO-yo
-ㅕ: yo You
-ㅑ: Ya I
-ㅐ: Aero Ho Ho Ho
-ㅔ: ape
-ㅗ: Oh Oh OH
-ㅓ: urge; jean
-ㅏ: Ark
-ㅣ: Ill
-ㅠ: Youtube 
-ㅜ: tun
-ㅡ: umm
+q: ㅂ boutique	
+w: ㅈ JaW
+e: ㄷ DEad
+r: ㄱ Grrrr
+t: ㅅ Sit
+a: ㅁ MamA
+s: ㄴ North South
+d: ㅇ O D Overdose
+f: ㄹ two leaf
+g: ㅎ Hug
+z: ㅋ Kizz
+x: ㅌ Tax
+c: ㅊ Chill
+v: ㅍ Pave
+y: ㅛ YO-yo
+u: ㅕ yo You
+i: ㅑ Ya I
+o: ㅐ Aero Ho Ho Ho
+p: ㅔ ape
+h: ㅗ Oh Oh OH
+j: ㅓ urge; jean
+k: ㅏ Ark
+l: ㅣ Ill
+b: ㅠ Youtube 
+n: ㅜ tun
+m: ㅡ umm
+R: ㄲ kk
+E: ㄸ tt DEad GEt 
+Q: ㅃ pp boutique PaQ
+T: ㅆ ss Sit
+W: ㅉ jj Jaw
+O: ㅒ yae Yellow
+P: ㅖ ye yape
