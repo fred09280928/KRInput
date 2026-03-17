@@ -546,6 +546,23 @@
                 }
             }
 
+            // ---------- Build hint string from correct answer (for error messages) ----------
+            function buildCorrectHint() {
+                if (!hintEnabled || !currentQuiz) return '';
+                const correctCombo = currentQuiz.combo;
+                let hintParts = [];
+                for (let ch of correctCombo) {
+                    const lower = ch.toLowerCase();
+                    const memo = MEMO_MAP[lower];
+                    if (memo) {
+                        hintParts.push(`[${lower}: ${memo}]`);
+                    } else {
+                        hintParts.push(`[${lower}: ?]`);
+                    }
+                }
+                return hintParts.join(' ');
+            }
+
             // ---------- Load quiz data from KRChars505.txt ----------
             async function loadQuizData() {
                 try {
@@ -634,6 +651,7 @@
                 QUIZ_LIST = shuffleArray(QUIZ_LIST);
                 
                 totalChars = QUIZ_LIST.length;
+                feedbackMsgEl.innerText = `✅ Loaded ${totalChars} characters (fallback). Start typing!`;
                 canType = true;
                 loadQuiz();
             }
@@ -679,23 +697,6 @@
                 // 不清除 feedbackMsg，保留最後的提示
             }
 
-            // ---------- Build error hint string from wrong keys ----------
-            function buildErrorHint() {
-                if (!hintEnabled) return '';
-                const wrongCombo = userInput;
-                let hintParts = [];
-                for (let ch of wrongCombo) {
-                    const lower = ch.toLowerCase();
-                    const memo = MEMO_MAP[lower];
-                    if (memo) {
-                        hintParts.push(`[${lower}: ${memo}]`);
-                    } else {
-                        hintParts.push(`[${lower}: ?]`);
-                    }
-                }
-                return hintParts.join(' ');
-            }
-
             // ---------- Handle keystroke ----------
             function onKeyDown(e) {
                 if (!canType || !currentQuiz) return;
@@ -714,11 +715,11 @@
 
                 // If userInput length exceeds correct combo length -> definitely wrong
                 if (userInput.length > correctCombo.length) {
-                    const errorHint = buildErrorHint();
-                    if (hintEnabled && errorHint) {
-                        lastErrorMsg = `❌ Error ${errorHint}`;
+                    const correctHint = buildCorrectHint();
+                    if (hintEnabled && correctHint) {
+                        lastErrorMsg = `❌ 錯誤！正確組合是：${correctCombo} ${correctHint}`;
                     } else {
-                        lastErrorMsg = `❌ Error`;
+                        lastErrorMsg = `❌ 錯誤！正確組合是：${correctCombo}`;
                     }
                     feedbackMsgEl.innerText = lastErrorMsg;
                     feedbackMsgEl.style.background = '#9e2d2d';
@@ -734,11 +735,11 @@
                 // Check if userInput matches the prefix of correct combo
                 for (let i = 0; i < userInput.length; i++) {
                     if (userInput[i] !== correctCombo[i]) {
-                        const errorHint = buildErrorHint();
-                        if (hintEnabled && errorHint) {
-                            lastErrorMsg = `❌ Error ${errorHint}`;
+                        const correctHint = buildCorrectHint();
+                        if (hintEnabled && correctHint) {
+                            lastErrorMsg = `❌ 錯誤！正確組合是：${correctCombo} ${correctHint}`;
                         } else {
-                            lastErrorMsg = `❌ Error`;
+                            lastErrorMsg = `❌ 錯誤！正確組合是：${correctCombo}`;
                         }
                         feedbackMsgEl.innerText = lastErrorMsg;
                         feedbackMsgEl.style.background = '#9e2d2d';
@@ -756,7 +757,7 @@
                 if (userInput === correctCombo) {
                     score += 1;
                     scoreDisplay.innerText = score;
-                    feedbackMsgEl.innerText = '✅ Correct! +1';
+                    feedbackMsgEl.innerText = '✅ 正確！ +1';
                     feedbackMsgEl.style.background = '#1f5f3a';
 
                     if (soundEnabled) {
@@ -768,13 +769,13 @@
                     // Move to next random quiz after short delay
                     setTimeout(() => {
                         loadQuiz();  // This will now pick a random quiz
-                        feedbackMsgEl.innerText = '⌨️ Type the combination ...';
+                        feedbackMsgEl.innerText = '⌨️ 請輸入組合...';
                         feedbackMsgEl.style.background = '#273a4b';
                         canType = true;
                     }, 800);
                 } else {
                     // Partial match
-                    feedbackMsgEl.innerText = `⌨️ Continue... (${userInput.length}/${correctCombo.length})`;
+                    feedbackMsgEl.innerText = `⌨️ 繼續... (${userInput.length}/${correctCombo.length})`;
                     feedbackMsgEl.style.background = '#273a4b';
                 }
             }
