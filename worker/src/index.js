@@ -1,13 +1,22 @@
-// KRInput memo API
-// GET  /api/memos  -> { memos: { "ㅂ": { memo, updated }, … } }
-// POST /api/memo   -> { jamo, memo } upsert
+// KRInput memo + weight API
+// GET  /api/memos  -> { memos: { "ㅂ": { memo, updated, weight }, … } }
+// POST /api/memo   -> { jamo, memo }        upsert memo
+// POST /api/review -> { jamo, result }      result = 'correct' | 'wrong'，回新 weight
 // GET  /api/health -> { ok: true }
+//
+// 權重規則與 ESFlash 相同：答錯 +3、答對 −1，夾在 1–15，新項目 12。
 
 const ALLOWED_ORIGINS = [
   'https://fred09280928.github.io',
   'http://localhost:8000',
   'http://127.0.0.1:8000',
 ];
+
+const WEIGHT_MIN = 1;
+const WEIGHT_MAX = 15;
+const WEIGHT_START = 12;
+const WEIGHT_WRONG = 3;
+const WEIGHT_CORRECT = -1;
 
 function cors(req) {
   const origin = req.headers.get('Origin') || '';
@@ -52,11 +61,18 @@ export default {
 
     if (url.pathname === '/api/memos' && request.method === 'GET') {
       const { results } = await env.DB.prepare(
-        'SELECT jamo, memo, updated FROM memos'
+        `SELECT m.jamo, m.memo, m.updated,
+                COALESCE(s.weight, ${WEIGHT_START}) AS weight
+           FROM memos m
+           LEFT JOIN stats s ON s.jamo = m.jamo`
       ).all();
       const memos = {};
       for (const row of results || []) {
-        memos[row.jamo] = { memo: row.memo, updated: row.updated };
+        memos[row.jamo] = {
+          memo: row.memo,
+          updated: row.updated,
+          weight: row.weight,
+        };
       }
       return json({ memos, count: Object.keys(memos).length }, 200, request);
     }
@@ -81,6 +97,59 @@ export default {
       ).bind(jamo, memo, ts).run();
 
       return json({ ok: true, jamo, memo, updated: ts }, 200, request);
+    }
+
+    // 答題結果 → 調整 weight（與 ESFlash 同一套規則）
+    if (url.pathname === '/api/review' && request.method === 'POST') {
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: 'invalid json' }, 400, request);
+      }
+      const jamo = (body.jamo || '').trim();
+      const result = body.result;
+      if (!jamo) return json({ error: 'jamo required' }, 400, request);
+      if (result !== 'correct' && result !== 'wrong') {
+        return json({ error: "result must be 'correct' or 'wrong'" }, 400, request);
+      }
+
+      const ts = nowTaipei();
+      const delta = result === 'wrong' ? WEIGHT_WRONG : WEIGHT_CORRECT;
+
+      // D1 沒有交易：先確保有這一列，再更新（兩句各自 idempotent）
+      await env.DB.prepare(
+        'INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES (?, ?, 0, 0)'
+      ).bind(jamo, WEIGHT_START).run();
+
+      await env.DB.prepare(
+        `UPDATE stats
+            SET weight  = MAX(${WEIGHT_MIN}, MIN(${WEIGHT_MAX}, weight + ?)),
+                correct = correct + ?,
+                wrong   = wrong + ?,
+                last    = ?
+          WHERE jamo = ?`
+      ).bind(
+        delta,
+        result === 'correct' ? 1 : 0,
+        result === 'wrong' ? 1 : 0,
+        ts,
+        jamo
+      ).run();
+
+      const row = await env.DB.prepare(
+        'SELECT jamo, weight, correct, wrong FROM stats WHERE jamo = ?'
+      ).bind(jamo).first();
+
+      return json({
+        ok: true,
+        jamo,
+        result,
+        weight: row ? row.weight : WEIGHT_START,
+        correct: row ? row.correct : 0,
+        wrong: row ? row.wrong : 0,
+        updated: ts,
+      }, 200, request);
     }
 
     return json({ error: 'not found' }, 404, request);

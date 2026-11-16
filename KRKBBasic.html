@@ -48,6 +48,18 @@
             flex-wrap: wrap;
         }
 
+        .weight-box {
+            background: #273a4b;
+            color: #cfe4f5;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: .5px;
+            white-space: nowrap;
+            flex: 0 0 auto;
+        }
+
         .home-btn {
             display: inline-flex;
             align-items: center;
@@ -409,6 +421,7 @@
         <div class="stats-bar">
             <a class="home-btn" href="/" title="Back to the app menu" aria-label="Back to the app menu">🏠</a>
             <div class="score-box" id="scoreDisplay">0</div>
+            <div class="weight-box" id="weightDisplay" title="Weight — higher means this letter comes up more often">⚖️ 12</div>
             
             <div class="memo-badge" id="memoBadge">
                 <span>💭</span>
@@ -515,6 +528,8 @@
             // State
             let currentEngKey = 'K';    // default: ㅏ
             let previousEngKey = null;   // Track previous key to avoid repetition
+            const weights = {};          // 韓文字母 -> weight（與 ESFlash 同規則：錯 +3、對 -1、夾 1–15、起始 12）
+            const WEIGHT_MIN = 1, WEIGHT_MAX = 15, WEIGHT_START = 12;
             let score = 0;
             let hintVisible = true;
             let autoPlayEnabled = true;
@@ -531,6 +546,7 @@
             const hintToggle = document.getElementById('hintToggle');
             const autoPlayToggle = document.getElementById('autoPlayToggle');
             const playButton = document.getElementById('playButton');
+            const weightDisplayEl = document.getElementById('weightDisplay');
             const memoTextEl = document.getElementById('memoText');
             const memoBadge = document.getElementById('memoBadge');
             const row1 = document.getElementById('row1');
@@ -596,11 +612,41 @@
                     Object.keys(remote).forEach(jamo => {
                         const v = remote[jamo];
                         if (v && typeof v.memo === 'string') memoMap[jamo] = v.memo;
+                        if (v && typeof v.weight === 'number') weights[jamo] = v.weight;
                     });
+                    paintWeight();
                     console.log('remote memos merged:', Object.keys(remote).length);
                 } catch (e) {
                     console.warn('memo API unavailable, using local KRMemo.txt', e);
                 }
+            }
+
+            function weightOf(jamo) {
+                const w = weights[jamo];
+                return Number.isFinite(w) ? w : WEIGHT_START;
+            }
+
+            function paintWeight() {
+                if (!weightDisplayEl || !MAP[currentEngKey]) return;
+                weightDisplayEl.innerText = '⚖️ ' + weightOf(MAP[currentEngKey].kr);
+            }
+
+            // 答題結果寫回 D1；失敗只警告，不影響練習（weight 留在記憶體）
+            function reportResult(result) {
+                const jamo = MAP[currentEngKey].kr;
+                const delta = result === 'wrong' ? 3 : -1;
+                weights[jamo] = Math.min(WEIGHT_MAX, Math.max(WEIGHT_MIN, weightOf(jamo) + delta));
+                paintWeight();
+                fetch(MEMO_API + '/api/review', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jamo: jamo, result: result })
+                }).then(r => r.ok ? r.json() : null).then(d => {
+                    if (d && typeof d.weight === 'number') {
+                        weights[jamo] = d.weight;
+                        paintWeight();
+                    }
+                }).catch(e => console.warn('review not saved (offline?)', e));
             }
 
             async function saveRemoteMemo(jamo, memo) {
@@ -736,17 +782,19 @@
 
             // ---------- Generate random key that's different from previous ----------
             function getRandomKey() {
-                // Filter out the previous key to avoid repetition
-                const availableKeys = previousEngKey 
-                    ? ALL_KEYS.filter(key => key !== previousEngKey)
-                    : ALL_KEYS;
-                
-                // If all keys are the same (only one key?), fallback to all keys
-                if (availableKeys.length === 0) {
-                    return ALL_KEYS[Math.floor(Math.random() * ALL_KEYS.length)];
+                // 排除上一個字母，避免連續重複
+                let pool = previousEngKey ? ALL_KEYS.filter(key => key !== previousEngKey) : ALL_KEYS;
+                if (pool.length === 0) pool = ALL_KEYS;
+
+                // weight 當輪盤：weight 越高越常出現（與 ESFlash 同一套抽題方式）
+                const w = pool.map(key => Math.max(WEIGHT_MIN, weightOf(MAP[key].kr)));
+                const total = w.reduce((a, b) => a + b, 0);
+                let r = Math.random() * total;
+                for (let i = 0; i < pool.length; i++) {
+                    r -= w[i];
+                    if (r <= 0) return pool[i];
                 }
-                
-                return availableKeys[Math.floor(Math.random() * availableKeys.length)];
+                return pool[pool.length - 1];
             }
 
             // ---------- Set a new character (Korean pronunciation plays if Auto Play is ON) ----------
@@ -765,6 +813,7 @@
                 
                 // Clear the memo display - memo only appears on error
                 clearMemoDisplay();
+                paintWeight();
                 
                 // Play Korean pronunciation when new character appears (if Auto Play is ON)
                 autoSpeakKorean(data.kr);
@@ -783,6 +832,7 @@
                 clearMemoDisplay();
                 
                 const currentKoreanChar = MAP[currentEngKey].kr;
+                reportResult('correct');
                 autoSpeakKorean(currentKoreanChar);
                 
                 canAnswer = false;
@@ -802,7 +852,8 @@
                 feedbackMsgEl.style.background = '#9e2d2d';
                 
                 const currentKoreanChar = MAP[currentEngKey].kr;
-                
+                reportResult('wrong');
+
                 // 1. Play the Korean pronunciation immediately
                 autoSpeakKorean(currentKoreanChar);
                 

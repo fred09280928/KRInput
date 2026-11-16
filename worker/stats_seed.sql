@@ -1,0 +1,27 @@
+-- KRInput stats seed: 26 letters, weight 12 (ESFlash 新卡起始值)
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅂ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅈ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㄷ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㄱ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅅ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅛ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅕ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅑ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅐ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅔ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅁ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㄴ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅇ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㄹ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅎ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅗ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅓ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅏ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅣ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅋ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅌ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅊ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅍ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅠ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅜ', 12, 0, 0);
+INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES ('ㅡ', 12, 0, 0);
