@@ -412,7 +412,7 @@
             <div class="korean-char" id="currentChar">ㅏ</div>
             <div class="input-hint" id="hintText">a · press "K"</div>
             <!-- Manual play button -->
-            <div class="play-button" id="playButton" title="Pronounce this letter">
+            <div class="play-button" id="playButton" title="Pronounce this letter (Space)">
                 <span>🔊</span>
             </div>
         </div>
@@ -810,6 +810,18 @@
 
             // ---------- Keydown handler ----------
             function onKeyDown(e) {
+                // memo 編輯視窗開著時，所有鍵都交給視窗處理（空白鍵要能輸入空格）
+                const modalOpen = memoModalEl && !memoModalEl.hidden;
+                if (modalOpen) return;
+
+                // Space = 念目前字母（跟點 🔊 一樣）
+                if (e.code === 'Space' || e.key === ' ') {
+                    if (e.altKey || e.ctrlKey || e.metaKey) return;
+                    e.preventDefault();
+                    playCurrentChar();
+                    return;
+                }
+
                 const key = e.key.toUpperCase();
                 if (e.altKey || e.ctrlKey || e.metaKey || key.length > 1) return;
                 if (!MAP[key]) return;
@@ -846,12 +858,14 @@
                 autoPlayEnabled = e.target.checked;
             });
 
-            playButton.addEventListener('click', () => {
-                const currentKoreanChar = MAP[currentEngKey].kr;
-                speakKorean(currentKoreanChar);
-                
+            // 念目前這題的字母（🔊 按鈕與 Space 共用；不受 Auto 開關影響）
+            function playCurrentChar() {
+                if (!MAP[currentEngKey]) return;
+                speakKorean(MAP[currentEngKey].kr);
                 // Note: Memo is NOT played here - only on errors with 1 second delay
-            });
+            }
+
+            playButton.addEventListener('click', playCurrentChar);
 
             // ---------- Memo 編輯視窗（✏️） ----------
             const memoModalEl = document.getElementById('memoModal');
