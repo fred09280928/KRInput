@@ -813,10 +813,10 @@
 
             // ---------- Set a new character (Korean pronunciation plays if Auto Play is ON) ----------
             function setNewCharacter() {
-                const newKey = getRandomKey();
-                
-                // Update previous key before setting new one
+                // 先記下「剛答完的那一題」，getRandomKey() 才排除得到它。
+                // 原本是抽完才更新，排除的其實是上上題，所以同一題會連續出現（約 4%）。
                 previousEngKey = currentEngKey;
+                const newKey = getRandomKey();
                 currentEngKey = newKey;
                 
                 const data = MAP[newKey];
