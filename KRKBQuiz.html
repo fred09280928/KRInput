@@ -431,6 +431,10 @@
                     <span>🔊 Sound</span>
                     <input type="checkbox" id="soundToggle" checked>
                 </div>
+                <div class="toggle-item">
+                    <span id="easyLabel">🎯 Easy</span>
+                    <input type="checkbox" id="easyToggle" checked>
+                </div>
             </div>
         </div>
 
@@ -559,7 +563,24 @@
             })();
 
             let SYL_ITEMS = {};        // syl -> { memo, weight, correct, wrong, updated }
-            let lastIndex = -1;        // 連續同題防護
+            let lastChar = null;       // 連續同題防護（比對音節本身，換池也不會漏）
+
+            // 難度：easy = 打 2 鍵的音節（이·도·수…，115 個）；取消勾選＝全部 505 個
+            let easyOnly = true;
+            const EASY_KEYS = 2;
+            let POOL = [];             // 目前這一輪可以抽的題目
+
+            function rebuildPool() {
+                if (!QUIZ_LIST.length) { POOL = []; return; }
+                POOL = easyOnly ? QUIZ_LIST.filter(q => q.combo.length === EASY_KEYS) : QUIZ_LIST.slice();
+                if (!POOL.length) POOL = QUIZ_LIST.slice();
+                lastChar = null;
+                const lb = document.getElementById('easyLabel');
+                if (lb) {
+                    const n = QUIZ_LIST.filter(q => q.combo.length === EASY_KEYS).length;
+                    lb.textContent = `🎯 Easy (${n})`;
+                }
+            }
 
             const weightOf = (syl) => {
                 const it = SYL_ITEMS[syl];
@@ -654,12 +675,12 @@
 
             // ---------- Helper: get random quiz index ----------
             function getRandomQuizIndex() {
-                const n = QUIZ_LIST.length;
+                const n = POOL.length;
                 if (!n) return 0;
                 const ws = new Array(n);
                 let total = 0;
                 for (let i = 0; i < n; i++) {
-                    ws[i] = i === lastIndex ? 0 : Math.max(1, weightOf(QUIZ_LIST[i].char));
+                    ws[i] = POOL[i].char === lastChar ? 0 : Math.max(1, weightOf(POOL[i].char));
                     total += ws[i];
                 }
                 if (total <= 0) return Math.floor(Math.random() * n);
@@ -667,9 +688,8 @@
                 for (let i = 0; i < n; i++) {
                     if (ws[i] <= 0) continue;
                     r -= ws[i];
-                    if (r <= 0) { lastIndex = i; return i; }
+                    if (r <= 0) return i;
                 }
-                lastIndex = n - 1;
                 return n - 1;
             }
 
@@ -825,7 +845,8 @@
                 
                 // Shuffle the quiz list for random order
                 QUIZ_LIST = shuffleArray(QUIZ_LIST);
-                
+                rebuildPool();
+
                 // Enable typing and load first quiz
                 canType = true;
                 loadQuiz();
@@ -860,6 +881,7 @@
                 QUIZ_LIST = shuffleArray(QUIZ_LIST);
                 
                 totalChars = QUIZ_LIST.length;
+                rebuildPool();
                 feedbackMsgEl.innerText = `✅ Loaded ${totalChars} characters (fallback). Start typing!`;
                 canType = true;
                 loadQuiz();
@@ -907,7 +929,8 @@
             function loadQuiz() {
                 // Select a random quiz from the list
                 const randomIndex = getRandomQuizIndex();
-                currentQuiz = QUIZ_LIST[randomIndex];
+                currentQuiz = POOL[randomIndex];
+                lastChar = currentQuiz.char;
                 
                 currentCharEl.innerText = currentQuiz.char;
                 
@@ -1044,6 +1067,20 @@
                 if (currentQuiz) speakText(currentQuiz.char);
             });
 
+            const easyToggle = document.getElementById('easyToggle');
+            easyToggle.addEventListener('change', (e) => {
+                easyOnly = e.target.checked;
+                try { localStorage.setItem('kr_easy', easyOnly ? '1' : '0'); } catch (err) {}
+                rebuildPool();
+                if (POOL.length) {
+                    loadQuiz();
+                    feedbackMsgEl.innerText = easyOnly
+                        ? `🎯 Easy — only ${POOL.length} two-key syllables`
+                        : `🎯 All ${POOL.length} syllables`;
+                    feedbackMsgEl.style.background = '#273a4b';
+                }
+            });
+
             memoEdit.addEventListener('click', openMemoModal);
             memoBadge.addEventListener('click', (e) => {
                 if (e.target.closest('.memo-edit')) return;
@@ -1092,6 +1129,13 @@
             async function init() {
                 const chip = document.getElementById('ownerChip');
                 if (chip) chip.textContent = OWNER;
+
+                // 預設 easy；記住上次的選擇（沒記錄過就是勾選）
+                try {
+                    const saved = localStorage.getItem('kr_easy');
+                    easyOnly = saved === null ? true : saved === '1';
+                } catch (e) { easyOnly = true; }
+                easyToggle.checked = easyOnly;
 
                 renderKeyboard();
                 // Wait a tick for keyboard to render, then attach click listeners
