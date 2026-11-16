@@ -48,6 +48,25 @@
             flex-wrap: wrap;
         }
 
+        .home-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #273a4b;
+            color: #fff;
+            font-size: 1.15rem;
+            line-height: 1;
+            text-decoration: none;
+            box-shadow: 0 2px 0 rgba(0, 0, 0, .35);
+            flex: 0 0 auto;
+            transition: transform .12s ease, background .12s ease;
+        }
+        .home-btn:hover { background: #35506a; transform: translateY(-1px); }
+        .home-btn:active { transform: translateY(0); }
+
         .score-box {
             background: #ffd966;
             color: #1e2a36;
@@ -388,6 +407,7 @@
 <body>
     <div class="container">
         <div class="stats-bar">
+            <a class="home-btn" href="index.html" title="Back to main menu" aria-label="Back to main menu">🏠</a>
             <div class="score-box" id="scoreDisplay">0</div>
             
             <div class="memo-badge" id="memoBadge">
