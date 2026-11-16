@@ -293,6 +293,87 @@
             -webkit-user-select: text;
         }
 
+        /* ✏️ memo 編輯 */
+        .memo-edit {
+            margin-left: 8px;
+            padding: 2px 6px;
+            border: 1px solid rgba(255, 255, 255, .25);
+            border-radius: 6px;
+            background: transparent;
+            color: inherit;
+            font-size: 0.85rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .memo-edit:hover { background: rgba(255, 255, 255, .12); }
+
+        .modal-backdrop {
+            position: fixed; inset: 0;
+            background: rgba(0, 0, 0, .55);
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px; z-index: 100;
+        }
+        .modal-backdrop[hidden] { display: none; }
+        .modal {
+            width: 100%; max-width: 420px;
+            background: #1e2b38;
+            border: 1px solid rgba(255, 255, 255, .12);
+            border-radius: 14px;
+            padding: 18px;
+            box-shadow: 0 18px 50px rgba(0, 0, 0, .45);
+        }
+        .modal h3 {
+            margin: 0 0 4px;
+            font-size: 1.05rem;
+            color: #dbe9f5;
+        }
+        .modal .modal-sub {
+            margin: 0 0 12px;
+            font-size: 0.78rem;
+            color: #8fa9bf;
+        }
+        .modal textarea {
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 96px;
+            resize: vertical;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, .18);
+            background: #16212b;
+            color: #eaf3fb;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        .modal textarea:focus { outline: 2px solid #4a9fd4; outline-offset: 1px; }
+        .modal-btns {
+            display: flex; justify-content: flex-end; gap: 10px;
+            margin-top: 14px;
+        }
+        .modal-btns button {
+            padding: 9px 16px;
+            border-radius: 9px;
+            border: 1px solid rgba(255, 255, 255, .2);
+            background: transparent;
+            color: #dbe9f5;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+        .modal-btns button.primary {
+            background: #2f7fb5;
+            border-color: #2f7fb5;
+            color: #fff;
+            font-weight: 600;
+        }
+        .modal-btns button:disabled { opacity: .55; cursor: default; }
+        .modal-status {
+            margin-top: 10px;
+            min-height: 1.1em;
+            font-size: 0.82rem;
+            color: #8fa9bf;
+        }
+        .modal-status.err { color: #ff9b9b; }
+
         .footer-note {
             text-align: center;
             color: #6c8aa3;
@@ -312,6 +393,7 @@
             <div class="memo-badge" id="memoBadge">
                 <span>💭</span>
                 <span class="memo-text" id="memoText"></span>
+                <button class="memo-edit" id="memoEdit" title="Edit memo for this letter">✏️</button>
             </div>
 
             <div class="toggle-group">
@@ -350,6 +432,19 @@
         </div>
         
         <div class="footer-note">Dubeolsik · press keys QWERTY · Auto-advances when correct · Memo appears only on error</div>
+    </div>
+
+    <div class="modal-backdrop" id="memoModal" hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="memoTitle">
+            <h3 id="memoTitle">💭 Memo · <span id="memoJamo">ㅂ</span></h3>
+            <p class="modal-sub">Saved to the cloud (D1) — shows up on every device.</p>
+            <textarea id="memoInput" placeholder="e.g. boutique" spellcheck="false"></textarea>
+            <div class="modal-btns">
+                <button id="memoCancel">Cancel</button>
+                <button id="memoSave" class="primary">Save</button>
+            </div>
+            <div class="modal-status" id="memoStatus"></div>
+        </div>
     </div>
 
     <script>
@@ -452,14 +547,54 @@
             }
 
             function parseMemoText(text) {
-                const lines = text.split('\n');
-                lines.forEach(line => {
-                    line = line.trim();
-                    if (line && line.includes(':')) {
-                        const [koreanChar, memo] = line.split(':').map(s => s.trim());
-                        memoMap[koreanChar] = memo;
+                // 檔案格式：`q: ㅂ boutique`（左邊是英文字母、右邊是韓文字母＋記憶法）
+                // 一律換成「韓文字母」當 key，否則查詢時 memoMap['ㅂ'] 永遠找不到。
+                text.split('\n').forEach(raw => {
+                    const line = raw.trim();
+                    if (!line || !line.includes(':')) return;
+                    const idx = line.indexOf(':');
+                    const left = line.slice(0, idx).trim().toUpperCase();
+                    const right = line.slice(idx + 1).trim();
+                    const m = right.match(/^([\u3131-\u318E])\s*(.*)$/);
+                    if (m) {
+                        memoMap[m[1]] = m[2].trim();          // 右邊自帶韓文字母
+                    } else if (MAP[left]) {
+                        memoMap[MAP[left].kr] = right;         // 只有 `q: boutique`
                     }
                 });
+            }
+
+            // Cloudflare Worker + D1：雲端版本優先於檔案內容
+            const MEMO_API = 'https://krmemo.fred0928.workers.dev';
+
+            async function loadRemoteMemos() {
+                try {
+                    const res = await fetch(MEMO_API + '/api/memos', { cache: 'no-store' });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+                    const remote = data.memos || {};
+                    Object.keys(remote).forEach(jamo => {
+                        const v = remote[jamo];
+                        if (v && typeof v.memo === 'string') memoMap[jamo] = v.memo;
+                    });
+                    console.log('remote memos merged:', Object.keys(remote).length);
+                } catch (e) {
+                    console.warn('memo API unavailable, using local KRMemo.txt', e);
+                }
+            }
+
+            async function saveRemoteMemo(jamo, memo) {
+                const res = await fetch(MEMO_API + '/api/memo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jamo: jamo, memo: memo })
+                });
+                if (!res.ok) {
+                    let msg = 'HTTP ' + res.status;
+                    try { msg = (await res.json()).error || msg; } catch (_) {}
+                    throw new Error(msg);
+                }
+                return res.json();
             }
 
             function useFallbackMemos() {
@@ -718,10 +853,74 @@
                 // Note: Memo is NOT played here - only on errors with 1 second delay
             });
 
+            // ---------- Memo 編輯視窗（✏️） ----------
+            const memoModalEl = document.getElementById('memoModal');
+            const memoInputEl = document.getElementById('memoInput');
+            const memoJamoEl = document.getElementById('memoJamo');
+            const memoStatusEl = document.getElementById('memoStatus');
+            const memoSaveBtn = document.getElementById('memoSave');
+            const memoCancelBtn = document.getElementById('memoCancel');
+            const memoEditBtn = document.getElementById('memoEdit');
+            let memoModalJamo = '';
+
+            function openMemoModal() {
+                memoModalJamo = MAP[currentEngKey].kr;
+                memoJamoEl.innerText = memoModalJamo;
+                memoInputEl.value = memoMap[memoModalJamo] || '';
+                memoStatusEl.innerText = '';
+                memoStatusEl.className = 'modal-status';
+                memoModalEl.hidden = false;
+                memoSaveBtn.disabled = false;
+                memoSaveBtn.innerText = 'Save';
+                setTimeout(() => memoInputEl.focus(), 30);
+            }
+
+            function closeMemoModal() {
+                memoModalEl.hidden = true;
+                memoInputEl.blur();
+            }
+
+            async function saveMemoModal() {
+                const jamo = memoModalJamo;
+                const memo = memoInputEl.value.trim();
+                memoSaveBtn.disabled = true;
+                memoSaveBtn.innerText = 'Saving…';
+                memoStatusEl.className = 'modal-status';
+                memoStatusEl.innerText = '';
+                try {
+                    await saveRemoteMemo(jamo, memo);
+                    memoMap[jamo] = memo;
+                    // 目前這題就顯示剛剛存進去的內容，讓使用者立刻看到結果
+                    if (MAP[currentEngKey] && MAP[currentEngKey].kr === jamo) {
+                        memoTextEl.innerText = memo;
+                    }
+                    memoStatusEl.innerText = 'Saved ✓';
+                    setTimeout(closeMemoModal, 500);
+                } catch (e) {
+                    memoStatusEl.className = 'modal-status err';
+                    memoStatusEl.innerText = 'Save failed: ' + e.message;
+                    memoSaveBtn.disabled = false;
+                    memoSaveBtn.innerText = 'Save';
+                }
+            }
+
+            memoEditBtn.addEventListener('click', openMemoModal);
+            memoCancelBtn.addEventListener('click', closeMemoModal);
+            memoSaveBtn.addEventListener('click', saveMemoModal);
+            memoModalEl.addEventListener('click', (e) => {
+                if (e.target === memoModalEl) closeMemoModal();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (memoModalEl.hidden) return;
+                if (e.key === 'Escape') { e.preventDefault(); closeMemoModal(); }
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveMemoModal(); }
+            }, true);
+
             // ---------- Initialize ----------
             async function init() {
                 renderKeyboard();
                 await loadMemoFile(); // This will try paths first, then fallback
+                await loadRemoteMemos(); // 雲端 D1 版本覆蓋檔案內容
                 setNewCharacter();
                 score = 0;
                 scoreDisplay.innerText = '0';

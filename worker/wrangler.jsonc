@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "krmemo",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-01",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "krmemo",
+      "database_id": "2e6e075d-9e0b-414e-8ebc-1437355df95f",
+      "remote": true
+    }
+  ]
+}
