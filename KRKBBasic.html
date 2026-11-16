@@ -43,6 +43,16 @@
             text-wrap: balance;
         }
 
+        .owner-chip {
+            font-size: 0.68rem;
+            color: #9db4c7;
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 999px;
+            padding: 3px 9px;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+
         .stats-bar {
             display: flex;
             justify-content: space-between;
@@ -436,6 +446,7 @@
             <a class="home-btn" href="/" title="Back to the app menu" aria-label="Back to the app menu">🏠</a>
             <div class="score-box" id="scoreDisplay">0</div>
             <div class="weight-box" id="weightDisplay" title="Weight — higher means this letter comes up more often">⚖️ 12</div>
+            <span class="owner-chip" id="ownerChip" title="Your data in D1 (memo + weights are per owner)">—</span>
             
             <div class="memo-badge" id="memoBadge">
                 <span>💭</span>
@@ -635,6 +646,8 @@
                     return DEFAULT_OWNER;
                 }
             })();
+
+            { const chip = document.getElementById('ownerChip'); if (chip) chip.textContent = OWNER; }
 
             async function loadRemoteMemos() {
                 try {
