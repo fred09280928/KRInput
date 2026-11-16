@@ -48,6 +48,103 @@
             flex-wrap: wrap;
         }
 
+        .home-btn {
+            width: 34px; height: 34px; flex: 0 0 auto;
+            display: inline-flex; align-items: center; justify-content: center;
+            border-radius: 50%; background: #3a4c5e; text-decoration: none;
+            font-size: 1rem; border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .home-btn:hover { background: #4a627a; }
+
+        .weight-box {
+            background: #3a4c5e; color: #ffd966; padding: 6px 14px;
+            border-radius: 40px; font-size: 1rem; white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .owner-chip {
+            font-size: 0.68rem; color: #9db4c7;
+            border: 1px solid rgba(255,255,255,0.14); border-radius: 999px;
+            padding: 3px 9px; white-space: nowrap; font-weight: 500;
+        }
+
+        .memo-badge {
+            display: flex; align-items: center; gap: 6px;
+            background: #2a3e52; border-radius: 40px; padding: 4px 10px;
+            max-width: 260px;
+        }
+
+        .memo-text {
+            font-size: 0.8rem; color: #cfe0ee; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis; max-width: 190px;
+        }
+
+        .memo-text.empty { color: #7f95a8; }
+
+        .memo-edit {
+            background: #3a4c5e; border: none; color: #fff; cursor: pointer;
+            border-radius: 50%; width: 26px; height: 26px; font-size: 0.8rem;
+            flex: 0 0 auto;
+        }
+
+        .memo-edit:hover { background: #4a627a; }
+
+        /* Memo 編輯視窗 */
+        .backdrop {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+            display: none; align-items: center; justify-content: center;
+            padding: 16px; z-index: 50;
+        }
+
+        .backdrop.open { display: flex; }
+
+        .modal {
+            background: #1e2a36; border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 20px; padding: 18px; width: 100%; max-width: 420px;
+            color: #e8f1f8;
+        }
+
+        .modal h2 { font-size: 1rem; margin-bottom: 4px; }
+        .modal .sub { font-size: 0.75rem; color: #9db4c7; margin-bottom: 12px; }
+
+        .modal textarea {
+            width: 100%; min-height: 96px; border-radius: 12px;
+            border: 1px solid #4a627a; background: #2a3e52; color: #eaf2f9;
+            padding: 10px; font-size: 0.9rem; resize: vertical;
+        }
+
+        .modal .row {
+            display: flex; align-items: center; gap: 8px;
+            justify-content: flex-end; margin-top: 12px;
+        }
+
+        .modal button {
+            border: none; border-radius: 10px; padding: 9px 16px;
+            font-size: 0.85rem; cursor: pointer;
+        }
+
+        #mSave { background: #ffd966; color: #1e2a36; font-weight: 700; }
+        #mCancel { background: #3a4c5e; color: #e8f1f8; }
+        #mStatus { font-size: 0.72rem; color: #9db4c7; margin-right: auto; }
+
+        .sb-group {
+            display: flex; align-items: center; gap: 8px;
+            flex-wrap: wrap; min-width: 0;
+        }
+
+        @media (max-width: 430px) {
+            .sb-group { gap: 6px; }
+            .stats-bar { padding: 8px 10px; }
+            .home-btn { width: 30px; height: 30px; font-size: 0.9rem; }
+            .score-box { font-size: 1.05rem; padding: 4px 10px; }
+            .record-box { font-size: 0.95rem; padding: 4px 10px; }
+            .weight-box { font-size: 0.85rem; padding: 4px 9px; }
+            .owner-chip { font-size: 0.62rem; padding: 2px 7px; }
+            .input-display { font-size: 1.4rem; letter-spacing: 5px; min-width: 120px; }
+            .memo-badge { max-width: 100%; }
+        }
+
         .score-box {
             background: #ffd966;
             color: #1e2a36;
@@ -312,11 +409,19 @@
 <body>
     <div class="container">
         <div class="stats-bar">
-            <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="sb-group">
+                <a class="home-btn" href="/" title="Back to the app menu" aria-label="Back to the app menu">🏠</a>
                 <div class="score-box" id="scoreDisplay">0</div>
                 <div class="record-box" id="recordDisplay">#1</div>
+                <div class="weight-box" id="weightDisplay" title="Weight — higher means this syllable comes up more often">⚖️ 12</div>
+                <span class="owner-chip" id="ownerChip" title="Your data in D1 (memo + weights are per owner)">—</span>
             </div>
             <div class="input-display" id="inputDisplay">＿＿</div>
+            <div class="memo-badge" id="memoBadge">
+                <span>💭</span>
+                <span class="memo-text empty" id="memoText">no memo</span>
+                <button class="memo-edit" id="memoEdit" title="Edit memo for this syllable">✏️</button>
+            </div>
             <div class="toggle-group">
                 <div class="toggle-item">
                     <span>🔤 Hint</span>
@@ -348,7 +453,20 @@
             <div class="message" id="feedbackMsg">📂 Loading 505 characters...</div>
         </div>
         
-        <div class="footer-note">Dubeolsik · 505 characters from KRChars505.txt · 動態底線 · 錯誤提示保留 · 隨機出題</div>
+        <div class="backdrop" id="mBackdrop">
+            <div class="modal">
+                <h2>Memo · <span id="mTitle">⋯</span></h2>
+                <div class="sub">Stored in D1 for this syllable only · owner <span id="mOwner">—</span></div>
+                <textarea id="mInput" maxlength="300" placeholder="e.g. hAn → 恨 (han = grudge)"></textarea>
+                <div class="row">
+                    <span id="mStatus"></span>
+                    <button id="mCancel">Cancel</button>
+                    <button id="mSave">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-note">Dubeolsik · 505 音節（KRChars505.txt）· 加權出題 · Space 發音 · memo 與 weight 存 D1 · 每人一份</div>
     </div>
 
     <script>
@@ -423,6 +541,72 @@
                 'P': 'ㅖ ye yape'
             };
 
+            // ---------- D1：owner / weight / memo ----------
+            // 505 個音節的 weight 與 memo 存在 Cloudflare D1（表 syl_stats / syl_memos），
+            // 每人一份；?owner=xxx 可切換，沒帶就是 fred0928。
+            const API_BASE = 'https://krmemo.fred0928.workers.dev';
+            const DEFAULT_OWNER = 'fred0928';
+            const WEIGHT_START = 12;
+            const OWNER = (() => {
+                try {
+                    const qs = new URLSearchParams(location.search).get('owner');
+                    if (qs && /^[A-Za-z0-9._-]{1,40}$/.test(qs)) { localStorage.setItem('kr_owner', qs); return qs; }
+                    const saved = localStorage.getItem('kr_owner');
+                    if (saved && /^[A-Za-z0-9._-]{1,40}$/.test(saved)) return saved;
+                    localStorage.setItem('kr_owner', DEFAULT_OWNER);
+                    return DEFAULT_OWNER;
+                } catch (e) { return DEFAULT_OWNER; }
+            })();
+
+            let SYL_ITEMS = {};        // syl -> { memo, weight, correct, wrong, updated }
+            let lastIndex = -1;        // 連續同題防護
+
+            const weightOf = (syl) => {
+                const it = SYL_ITEMS[syl];
+                return it && Number.isFinite(it.weight) ? it.weight : WEIGHT_START;
+            };
+            const memoOf = (syl) => (SYL_ITEMS[syl] && SYL_ITEMS[syl].memo) || '';
+
+            async function loadD1() {
+                try {
+                    const r = await fetch(`${API_BASE}/api/syl?owner=${encodeURIComponent(OWNER)}`, { cache: 'no-store' });
+                    const d = await r.json();
+                    SYL_ITEMS = (d && d.items) || {};
+                } catch (e) {
+                    console.warn('D1 unavailable — weights fall back to 12', e);
+                    SYL_ITEMS = {};
+                }
+            }
+
+            async function reportResult(syl, result) {
+                try {
+                    const r = await fetch(`${API_BASE}/api/syl/review`, {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({ owner: OWNER, syl, result })
+                    });
+                    const d = await r.json();
+                    if (d && d.ok) {
+                        SYL_ITEMS[syl] = Object.assign({}, SYL_ITEMS[syl] || {},
+                            { weight: d.weight, correct: d.correct, wrong: d.wrong });
+                        if (currentQuiz && currentQuiz.char === syl) paintMeta();
+                    }
+                } catch (e) {
+                    console.warn('review not saved', e);
+                }
+            }
+
+            async function saveMemo(syl, memo) {
+                const r = await fetch(`${API_BASE}/api/syl/memo`, {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ owner: OWNER, syl, memo })
+                });
+                const d = await r.json();
+                if (!d || !d.ok) throw new Error((d && d.error) || 'save failed');
+                SYL_ITEMS[syl] = Object.assign({}, SYL_ITEMS[syl] || {}, { memo: d.memo, updated: d.updated });
+            }
+
             // ---------- State ----------
             let QUIZ_LIST = [];                // will be loaded from file
             let currentQuiz = null;
@@ -442,6 +626,15 @@
             const inputDisplayEl = document.getElementById('inputDisplay');
             const feedbackMsgEl = document.getElementById('feedbackMsg');
             const scoreDisplay = document.getElementById('scoreDisplay');
+            const weightDisplay = document.getElementById('weightDisplay');
+            const memoTextEl = document.getElementById('memoText');
+            const memoBadge = document.getElementById('memoBadge');
+            const memoEdit = document.getElementById('memoEdit');
+            const mBackdrop = document.getElementById('mBackdrop');
+            const mTitle = document.getElementById('mTitle');
+            const mOwner = document.getElementById('mOwner');
+            const mInput = document.getElementById('mInput');
+            const mStatus = document.getElementById('mStatus');
             const recordDisplay = document.getElementById('recordDisplay');
             const hintToggle = document.getElementById('hintToggle');
             const soundToggle = document.getElementById('soundToggle');
@@ -461,7 +654,23 @@
 
             // ---------- Helper: get random quiz index ----------
             function getRandomQuizIndex() {
-                return Math.floor(Math.random() * QUIZ_LIST.length);
+                const n = QUIZ_LIST.length;
+                if (!n) return 0;
+                const ws = new Array(n);
+                let total = 0;
+                for (let i = 0; i < n; i++) {
+                    ws[i] = i === lastIndex ? 0 : Math.max(1, weightOf(QUIZ_LIST[i].char));
+                    total += ws[i];
+                }
+                if (total <= 0) return Math.floor(Math.random() * n);
+                let r = Math.random() * total;
+                for (let i = 0; i < n; i++) {
+                    if (ws[i] <= 0) continue;
+                    r -= ws[i];
+                    if (r <= 0) { lastIndex = i; return i; }
+                }
+                lastIndex = n - 1;
+                return n - 1;
             }
 
             // ---------- Helper: speak text ----------
@@ -656,6 +865,44 @@
                 loadQuiz();
             }
 
+            // ---------- 當前題目的 weight 與 memo ----------
+            function paintMeta() {
+                if (!currentQuiz) return;
+                weightDisplay.innerText = '⚖️ ' + weightOf(currentQuiz.char);
+                const memo = memoOf(currentQuiz.char);
+                memoTextEl.innerText = memo || 'no memo';
+                memoTextEl.classList.toggle('empty', !memo);
+                memoTextEl.title = memo;
+            }
+
+            function openMemoModal() {
+                if (!currentQuiz) return;
+                mTitle.innerText = currentQuiz.char;
+                mOwner.innerText = OWNER;
+                mInput.value = memoOf(currentQuiz.char);
+                mStatus.innerText = '';
+                mBackdrop.classList.add('open');
+                setTimeout(() => mInput.focus(), 30);
+            }
+
+            function closeMemoModal() {
+                mBackdrop.classList.remove('open');
+            }
+
+            async function submitMemo() {
+                if (!currentQuiz) return;
+                const syl = currentQuiz.char;
+                mStatus.innerText = 'Saving…';
+                try {
+                    await saveMemo(syl, mInput.value.trim());
+                    mStatus.innerText = 'Saved ✓';
+                    paintMeta();
+                    setTimeout(closeMemoModal, 450);
+                } catch (e) {
+                    mStatus.innerText = '❌ ' + e.message;
+                }
+            }
+
             // ---------- Update UI with current quiz ----------
             function loadQuiz() {
                 // Select a random quiz from the list
@@ -677,6 +924,7 @@
                 
                 userInput = '';
                 updateInputDisplay();
+                paintMeta();
 
                 // Auto-speak if sound on
                 if (soundEnabled) {
@@ -723,6 +971,7 @@
                     }
                     feedbackMsgEl.innerText = lastErrorMsg;
                     feedbackMsgEl.style.background = '#9e2d2d';
+                    reportResult(currentQuiz.char, 'wrong');
 
                     canType = false;
                     setTimeout(() => {
@@ -734,7 +983,9 @@
 
                 // Check if userInput matches the prefix of correct combo
                 for (let i = 0; i < userInput.length; i++) {
-                    if (userInput[i] !== correctCombo[i]) {
+                    // 資料檔用大寫表示 Shift（ㅃㅉㄸㄲㅆ…），這裡不分大小寫比對，
+                    // 否則 85 個雙子音音節永遠打不出來（手機也沒有 Shift 可按）
+                    if (userInput[i].toLowerCase() !== correctCombo[i].toLowerCase()) {
                         const correctHint = buildCorrectHint();
                         if (hintEnabled && correctHint) {
                             lastErrorMsg = `❌ 錯誤！正確組合是：${correctCombo} ${correctHint}`;
@@ -743,6 +994,7 @@
                         }
                         feedbackMsgEl.innerText = lastErrorMsg;
                         feedbackMsgEl.style.background = '#9e2d2d';
+                        reportResult(currentQuiz.char, 'wrong');
 
                         canType = false;
                         setTimeout(() => {
@@ -754,9 +1006,10 @@
                 }
 
                 // If full match -> correct!
-                if (userInput === correctCombo) {
+                if (userInput.toLowerCase() === correctCombo.toLowerCase()) {
                     score += 1;
                     scoreDisplay.innerText = score;
+                    reportResult(currentQuiz.char, 'correct');
                     feedbackMsgEl.innerText = '✅ 正確！ +1';
                     feedbackMsgEl.style.background = '#1f5f3a';
 
@@ -782,6 +1035,30 @@
 
             // ---------- Event listeners ----------
             window.addEventListener('keydown', onKeyDown);
+
+            // Space = 念目前這個音節（編輯視窗開著時不攔）
+            window.addEventListener('keydown', (e) => {
+                if (e.code !== 'Space' && e.key !== ' ') return;
+                if (mBackdrop.classList.contains('open')) return;
+                e.preventDefault();
+                if (currentQuiz) speakText(currentQuiz.char);
+            });
+
+            memoEdit.addEventListener('click', openMemoModal);
+            memoBadge.addEventListener('click', (e) => {
+                if (e.target.closest('.memo-edit')) return;
+                openMemoModal();
+            });
+            document.getElementById('mSave').addEventListener('click', submitMemo);
+            document.getElementById('mCancel').addEventListener('click', closeMemoModal);
+            mBackdrop.addEventListener('click', (e) => { if (e.target === mBackdrop) closeMemoModal(); });
+            mInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submitMemo(); }
+                if (e.key === 'Escape') { e.preventDefault(); closeMemoModal(); }
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && mBackdrop.classList.contains('open')) closeMemoModal();
+            });
 
             hintToggle.addEventListener('change', (e) => {
                 hintEnabled = e.target.checked;
@@ -813,10 +1090,16 @@
 
             // ---------- Initialize ----------
             async function init() {
+                const chip = document.getElementById('ownerChip');
+                if (chip) chip.textContent = OWNER;
+
                 renderKeyboard();
                 // Wait a tick for keyboard to render, then attach click listeners
                 setTimeout(setupKeyClickListeners, 100);
                 
+                // 先拿 D1 的 weight／memo，再抽第一題（失敗也照樣開始，全部當 12）
+                await loadD1();
+
                 // Load quiz data from file
                 await loadQuizData();
                 

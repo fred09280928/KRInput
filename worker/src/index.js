@@ -5,6 +5,11 @@
 // POST /api/review -> { owner?, jamo, result }      result = 'correct' | 'wrong'，回新 weight
 // GET  /api/health -> { ok: true }
 //
+// 505 音節頁（KRKBQuiz）：key 是音節（예: 한），不是字母，所以另用一組表
+// GET  /api/syl?owner=fred0928    -> { owner, items: { "한": { memo, weight, correct, wrong } }, count }
+// POST /api/syl/memo   -> { owner?, syl, memo }
+// POST /api/syl/review -> { owner?, syl, result }
+//
 // 權重規則與 ESFlash 相同：答錯 +3、答對 −1，夾在 1–15，新項目 12。
 
 const ALLOWED_ORIGINS = [
@@ -160,6 +165,87 @@ export default {
         owner,
         jamo,
         result,
+        weight: row ? row.weight : WEIGHT_START,
+        correct: row ? row.correct : 0,
+        wrong: row ? row.wrong : 0,
+        updated: ts,
+      }, 200, request);
+    }
+
+    // ── 505 音節（KRKBQuiz）──────────────────────────────────────────
+    if (url.pathname === '/api/syl' && request.method === 'GET') {
+      const owner = normOwner(url.searchParams.get('owner'));
+      const items = {};
+
+      const st = await env.DB.prepare(
+        'SELECT syl, weight, correct, wrong, last FROM syl_stats WHERE owner = ?'
+      ).bind(owner).all();
+      for (const r of st.results || []) {
+        items[r.syl] = { memo: '', updated: '', weight: r.weight, correct: r.correct, wrong: r.wrong, last: r.last };
+      }
+
+      const me = await env.DB.prepare(
+        'SELECT syl, memo, updated FROM syl_memos WHERE owner = ?'
+      ).bind(owner).all();
+      for (const r of me.results || []) {
+        const cur = items[r.syl] || { weight: WEIGHT_START, correct: 0, wrong: 0, last: '' };
+        items[r.syl] = { ...cur, memo: r.memo, updated: r.updated };
+      }
+
+      return json({ owner, items, count: Object.keys(items).length }, 200, request);
+    }
+
+    if (url.pathname === '/api/syl/memo' && request.method === 'POST') {
+      let body;
+      try { body = await request.json(); } catch { return json({ error: 'invalid json' }, 400, request); }
+      const owner = normOwner(body.owner);
+      const syl = (body.syl || '').trim();
+      const memo = typeof body.memo === 'string' ? body.memo.trim() : '';
+      if (!syl) return json({ error: 'syl required' }, 400, request);
+      if (syl.length > 4) return json({ error: 'syl too long' }, 400, request);
+      if (memo.length > 300) return json({ error: 'memo too long (max 300)' }, 400, request);
+
+      const ts = nowTaipei();
+      await env.DB.prepare(
+        `INSERT INTO syl_memos (owner, syl, memo, updated) VALUES (?, ?, ?, ?)
+         ON CONFLICT(owner, syl) DO UPDATE SET memo = excluded.memo, updated = excluded.updated`
+      ).bind(owner, syl, memo, ts).run();
+      return json({ ok: true, owner, syl, memo, updated: ts }, 200, request);
+    }
+
+    if (url.pathname === '/api/syl/review' && request.method === 'POST') {
+      let body;
+      try { body = await request.json(); } catch { return json({ error: 'invalid json' }, 400, request); }
+      const owner = normOwner(body.owner);
+      const syl = (body.syl || '').trim();
+      const result = body.result;
+      if (!syl) return json({ error: 'syl required' }, 400, request);
+      if (result !== 'correct' && result !== 'wrong') {
+        return json({ error: "result must be 'correct' or 'wrong'" }, 400, request);
+      }
+
+      const ts = nowTaipei();
+      const delta = result === 'wrong' ? WEIGHT_WRONG : WEIGHT_CORRECT;
+
+      await env.DB.prepare(
+        'INSERT OR IGNORE INTO syl_stats (owner, syl, weight, correct, wrong) VALUES (?, ?, ?, 0, 0)'
+      ).bind(owner, syl, WEIGHT_START).run();
+
+      await env.DB.prepare(
+        `UPDATE syl_stats
+            SET weight  = MAX(${WEIGHT_MIN}, MIN(${WEIGHT_MAX}, weight + ?)),
+                correct = correct + ?,
+                wrong   = wrong + ?,
+                last    = ?
+          WHERE owner = ? AND syl = ?`
+      ).bind(delta, result === 'correct' ? 1 : 0, result === 'wrong' ? 1 : 0, ts, owner, syl).run();
+
+      const row = await env.DB.prepare(
+        'SELECT weight, correct, wrong FROM syl_stats WHERE owner = ? AND syl = ?'
+      ).bind(owner, syl).first();
+
+      return json({
+        ok: true, owner, syl, result,
         weight: row ? row.weight : WEIGHT_START,
         correct: row ? row.correct : 0,
         wrong: row ? row.wrong : 0,
