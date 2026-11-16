@@ -1,7 +1,8 @@
 // KRInput memo + weight API
-// GET  /api/memos  -> { memos: { "ㅂ": { memo, updated, weight }, … } }
-// POST /api/memo   -> { jamo, memo }        upsert memo
-// POST /api/review -> { jamo, result }      result = 'correct' | 'wrong'，回新 weight
+// 多使用者：每一列都帶 owner（預設 'fred0928'）。owner 可用 ?owner= 或 body.owner 指定。
+// GET  /api/memos?owner=fred0928  -> { owner, memos: { "ㅂ": { memo, updated, weight }, … } }
+// POST /api/memo   -> { owner?, jamo, memo }        upsert memo
+// POST /api/review -> { owner?, jamo, result }      result = 'correct' | 'wrong'，回新 weight
 // GET  /api/health -> { ok: true }
 //
 // 權重規則與 ESFlash 相同：答錯 +3、答對 −1，夾在 1–15，新項目 12。
@@ -17,6 +18,14 @@ const WEIGHT_MAX = 15;
 const WEIGHT_START = 12;
 const WEIGHT_WRONG = 3;
 const WEIGHT_CORRECT = -1;
+const DEFAULT_OWNER = 'fred0928';
+
+// owner 只是分類標籤，不是認證；限制長度與字元，避免亂塞
+function normOwner(raw) {
+  const v = String(raw == null ? '' : raw).trim();
+  if (!v) return DEFAULT_OWNER;
+  return /^[A-Za-z0-9._-]{1,40}$/.test(v) ? v : DEFAULT_OWNER;
+}
 
 function cors(req) {
   const origin = req.headers.get('Origin') || '';
@@ -60,12 +69,14 @@ export default {
     }
 
     if (url.pathname === '/api/memos' && request.method === 'GET') {
+      const owner = normOwner(url.searchParams.get('owner'));
       const { results } = await env.DB.prepare(
         `SELECT m.jamo, m.memo, m.updated,
                 COALESCE(s.weight, ${WEIGHT_START}) AS weight
            FROM memos m
-           LEFT JOIN stats s ON s.jamo = m.jamo`
-      ).all();
+           LEFT JOIN stats s ON s.jamo = m.jamo AND s.owner = m.owner
+          WHERE m.owner = ?`
+      ).bind(owner).all();
       const memos = {};
       for (const row of results || []) {
         memos[row.jamo] = {
@@ -74,7 +85,7 @@ export default {
           weight: row.weight,
         };
       }
-      return json({ memos, count: Object.keys(memos).length }, 200, request);
+      return json({ owner, memos, count: Object.keys(memos).length }, 200, request);
     }
 
     if (url.pathname === '/api/memo' && request.method === 'POST') {
@@ -84,6 +95,7 @@ export default {
       } catch {
         return json({ error: 'invalid json' }, 400, request);
       }
+      const owner = normOwner(body.owner);
       const jamo = (body.jamo || '').trim();
       const memo = typeof body.memo === 'string' ? body.memo.trim() : '';
       if (!jamo) return json({ error: 'jamo required' }, 400, request);
@@ -92,11 +104,11 @@ export default {
 
       const ts = nowTaipei();
       await env.DB.prepare(
-        `INSERT INTO memos (jamo, memo, updated) VALUES (?, ?, ?)
-         ON CONFLICT(jamo) DO UPDATE SET memo = excluded.memo, updated = excluded.updated`
-      ).bind(jamo, memo, ts).run();
+        `INSERT INTO memos (owner, jamo, memo, updated) VALUES (?, ?, ?, ?)
+         ON CONFLICT(owner, jamo) DO UPDATE SET memo = excluded.memo, updated = excluded.updated`
+      ).bind(owner, jamo, memo, ts).run();
 
-      return json({ ok: true, jamo, memo, updated: ts }, 200, request);
+      return json({ ok: true, owner, jamo, memo, updated: ts }, 200, request);
     }
 
     // 答題結果 → 調整 weight（與 ESFlash 同一套規則）
@@ -107,6 +119,7 @@ export default {
       } catch {
         return json({ error: 'invalid json' }, 400, request);
       }
+      const owner = normOwner(body.owner);
       const jamo = (body.jamo || '').trim();
       const result = body.result;
       if (!jamo) return json({ error: 'jamo required' }, 400, request);
@@ -119,8 +132,8 @@ export default {
 
       // D1 沒有交易：先確保有這一列，再更新（兩句各自 idempotent）
       await env.DB.prepare(
-        'INSERT OR IGNORE INTO stats (jamo, weight, correct, wrong) VALUES (?, ?, 0, 0)'
-      ).bind(jamo, WEIGHT_START).run();
+        'INSERT OR IGNORE INTO stats (owner, jamo, weight, correct, wrong) VALUES (?, ?, ?, 0, 0)'
+      ).bind(owner, jamo, WEIGHT_START).run();
 
       await env.DB.prepare(
         `UPDATE stats
@@ -128,21 +141,23 @@ export default {
                 correct = correct + ?,
                 wrong   = wrong + ?,
                 last    = ?
-          WHERE jamo = ?`
+          WHERE owner = ? AND jamo = ?`
       ).bind(
         delta,
         result === 'correct' ? 1 : 0,
         result === 'wrong' ? 1 : 0,
         ts,
+        owner,
         jamo
       ).run();
 
       const row = await env.DB.prepare(
-        'SELECT jamo, weight, correct, wrong FROM stats WHERE jamo = ?'
-      ).bind(jamo).first();
+        'SELECT jamo, weight, correct, wrong FROM stats WHERE owner = ? AND jamo = ?'
+      ).bind(owner, jamo).first();
 
       return json({
         ok: true,
+        owner,
         jamo,
         result,
         weight: row ? row.weight : WEIGHT_START,

@@ -1,17 +1,22 @@
 -- KRInput memo store (D1 `krmemo`)
--- 一筆 = 一個韓文字母（子音／母音）的記憶法
+-- 一筆 = 一個使用者 × 一個韓文字母（子音／母音）的記憶法
+-- owner 只是分類標籤（不是認證）：預設 'fred0928'
 
 CREATE TABLE IF NOT EXISTS memos (
-  jamo    TEXT PRIMARY KEY,          -- ㅂ ㅈ ㄷ …（單一字母，不用英文字母當 key）
-  memo    TEXT NOT NULL DEFAULT '',  -- 記憶法文字，可含換行
-  updated TEXT NOT NULL DEFAULT ''   -- 'YYYY-MM-DD HH:MM:SS'（台北時間）
+  owner   TEXT NOT NULL DEFAULT 'fred0928',
+  jamo    TEXT NOT NULL,              -- ㅂ ㅈ ㄷ …（單一字母，不用英文字母當 key）
+  memo    TEXT NOT NULL DEFAULT '',   -- 記憶法文字，可含換行
+  updated TEXT NOT NULL DEFAULT '',   -- 'YYYY-MM-DD HH:MM:SS'（台北時間）
+  PRIMARY KEY (owner, jamo)
 );
 
 -- 出題權重（與 ESFlash 同一套：答錯 +3、答對 -1，夾 1-15，新項目 12）
 CREATE TABLE IF NOT EXISTS stats (
-  jamo    TEXT PRIMARY KEY,           -- ㅂ ㅈ ㄷ …
+  owner   TEXT NOT NULL DEFAULT 'fred0928',
+  jamo    TEXT NOT NULL,              -- ㅂ ㅈ ㄷ …
   weight  INTEGER NOT NULL DEFAULT 12,
   correct INTEGER NOT NULL DEFAULT 0,
   wrong   INTEGER NOT NULL DEFAULT 0,
-  last    TEXT
+  last    TEXT,
+  PRIMARY KEY (owner, jamo)
 );

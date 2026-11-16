@@ -617,9 +617,28 @@
             // Cloudflare Worker + D1：雲端版本優先於檔案內容
             const MEMO_API = 'https://krmemo.fred0928.workers.dev';
 
+            // 資料歸屬：D1 的每一列都帶 owner，預設自己的名字。
+            // 別人要用時開 `?owner=他的名字` 即可，資料互不干擾（owner 不是密碼）。
+            const DEFAULT_OWNER = 'fred0928';
+            const OWNER = (() => {
+                try {
+                    const qs = new URLSearchParams(location.search).get('owner');
+                    if (qs && /^[A-Za-z0-9._-]{1,40}$/.test(qs)) {
+                        localStorage.setItem('kr_owner', qs);
+                        return qs;
+                    }
+                    const saved = localStorage.getItem('kr_owner');
+                    if (saved && /^[A-Za-z0-9._-]{1,40}$/.test(saved)) return saved;
+                    localStorage.setItem('kr_owner', DEFAULT_OWNER);
+                    return DEFAULT_OWNER;
+                } catch (_) {
+                    return DEFAULT_OWNER;
+                }
+            })();
+
             async function loadRemoteMemos() {
                 try {
-                    const res = await fetch(MEMO_API + '/api/memos', { cache: 'no-store' });
+                    const res = await fetch(MEMO_API + '/api/memos?owner=' + encodeURIComponent(OWNER), { cache: 'no-store' });
                     if (!res.ok) throw new Error('HTTP ' + res.status);
                     const data = await res.json();
                     const remote = data.memos || {};
@@ -654,7 +673,7 @@
                 fetch(MEMO_API + '/api/review', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ jamo: jamo, result: result })
+                    body: JSON.stringify({ owner: OWNER, jamo: jamo, result: result })
                 }).then(r => r.ok ? r.json() : null).then(d => {
                     if (d && typeof d.weight === 'number') {
                         weights[jamo] = d.weight;
@@ -667,7 +686,7 @@
                 const res = await fetch(MEMO_API + '/api/memo', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ jamo: jamo, memo: memo })
+                    body: JSON.stringify({ owner: OWNER, jamo: jamo, memo: memo })
                 });
                 if (!res.ok) {
                     let msg = 'HTTP ' + res.status;
